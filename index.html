@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBER WOLF | Command Center V2</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;500&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="scanlines"></div>
+
+    <header class="cyber-header">
+        <div class="logo glitch" data-text="CYBER WOLF">CYBER WOLF</div>
+        <div class="system-status">
+            <span class="status-label">CONSCIOUSNESS:</span>
+            <div class="status-bar"><div class="status-fill" id="consciousness-fill" style="width:88%"></div></div>
+        </div>
+    </header>
+
+    <main class="dashboard-grid">
+        <section class="widget clock-widget">
+            <h3 class="widget-title">SYSTEM TIME</h3>
+            <div id="clock-time" class="neon-text">00:00:00</div>
+            <div id="clock-date">2026.04.07</div>
+        </section>
+
+        <section class="widget weather-widget">
+            <h3 class="widget-title">ATMOSPHERIC DATA</h3>
+            <div id="weather-info">LOADING UPLINK...</div>
+        </section>
+
+        <section class="widget search-widget">
+            <h3 class="widget-title">GLOBAL NET SEARCH</h3>
+            <div class="input-group">
+                <input type="text" id="search-query" placeholder="QUERY DATABASE...">
+                <button id="run-search">SCAN</button>
+            </div>
+            <div id="search-results"></div>
+        </section>
+
+        <section class="widget task-widget">
+            <h3 class="widget-title">MISSION OBJECTIVES</h3>
+            <div class="input-group">
+                <input type="text" id="task-input" placeholder="NEW TASK...">
+                <button id="add-task">+</button>
+            </div>
+            <ul id="task-list"></ul>
+        </section>
+
+        <section class="widget quote-widget">
+            <h3 class="widget-title">CORE DIRECTIVE</h3>
+            <p id="quote-text">"LOVE UNDER WILL."</p>
+        </section>
+
+        <section class="widget music-widget">
+            <h3 class="widget-title">AUDIO UPLINK</h3>
+            <div class="input-group">
+                <input type="text" id="audio-url-input" placeholder="PASTE AUDIO URL...">
+                <button id="load-audio">LOAD</button>
+            </div>
+            <audio id="cyber-audio" controls style="width: 100%; margin-top: 10px; filter: invert(1) hue-rotate(180deg);"></audio>
+        </section>
+    </main>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="neon-purple">SYSTEM CONFIGURATION</h2>
+            <div class="setting-item">
+                <label>ACCENT COLOR</label>
+                <input type="color" id="accent-slider" value="#00f0ff">
+            </div>
+            <div class="setting-item">
+                <label>SECONDARY COLOR</label>
+                <input type="color" id="secondary-slider" value="#b026ff">
+            </div>
+            <div class="setting-item">
+                <label>LOCATION</label>
+                <input type="text" id="location-input" placeholder="CITY NAME...">
+            </div>
+            <div class="setting-item">
+                <label>DIRECTIVE</label>
+                <input type="text" id="directive-input" placeholder="CORE MESSAGE...">
+            </div>
+            <button id="close-settings">SAVE & EXIT</button>
+        </div>
+    </div>
+
+    <footer class="cyber-footer">
+        <div>SOETECH_OS_V4.2 // ENCRYPTED</div>
+        <button id="settings-toggle">⚙ CONFIG</button>
+    </footer>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
