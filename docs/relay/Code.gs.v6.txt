@@ -2,14 +2,13 @@
  * CyberWolf Dashboard — Google Sheets Bridge Relay (v6)
  * 
  * Server-side Apps Script middleware between browser dashboard
- * and Google Sheets. Handles CORS, JSON parsing, task sync.
+ * and Google Sheets. Handles JSON parsing, task sync.
  * 
- * v6 FIX: Corrected ALL Apps Script ContentService patterns.
- *   - Individual .setHeader(key, value) calls → NOT SUPPORTED in Apps Script
- *   - Fixed: output.setHeaders({...object...}) for CORS batch-header injection
- *   - Fixed: e.postData.getDataAsString() instead of e.postData.contents
- *   - doOptions() removed — Apps Script Web App handles OPTIONS preflight natively
- *   - Apps Script always returns HTTP 200; errors communicated via JSON body
+ * v6 FIX: Removed ALL ContentService header manipulation.
+ *   - Apps Script ContentService.TextOutput does NOT have .setHeader(), .getHeaders(), or .setStatus()
+ *   - These are browser/Node.js APIs that don't exist in Apps Script runtime
+ *   - Apps Script Web Apps handle CORS automatically via the web app framework
+ *   - Previous versions (v1-v5) failed with TypeError because they tried to call non-existent methods
  * 
  * DEPLOYMENT:
  * 1. Open your Google Sheet "CyberWolf-Sync"
@@ -20,7 +19,7 @@
  * 6. Deploy > New deployment > Select type: Web app
  *    - Execute as: Me
  *    - Who has access: Anyone
- * 7. Click Deploy → authorize permissions
+ * 7. Click Deploy -> authorize permissions
  * 8. Copy the new Web App URL
  * 9. Send URL back to CIPHER for dashboard.js update
  */
@@ -40,7 +39,7 @@ function doGet(e) {
     } else if (p.action === 'heartbeat') {
       return jsonResp({ status: 'ok', rows: getRowCount() });
     }
-    return jsonResp({ error: 'unknown action' });
+    return jsonResp({ error: 'unknown action' }, 400);
   } catch (err) {
     return jsonResp({ error: 'doGet failed', message: err.toString() });
   }
@@ -49,9 +48,9 @@ function doGet(e) {
 /** POST endpoint: submit task completion. Body: {userId, deviceId, taskId, completed, taskLabel} */
 function doPost(e) {
   try {
-    var body = JSON.parse(e.postData.getDataAsString());
+    var body = JSON.parse(e.postData.contents);
     if (!body.userId || !body.deviceId || !body.taskId) {
-      return jsonResp({ error: 'missing fields', required: ['userId','deviceId','taskId'] });
+      return jsonResp({ error: 'missing fields', required: ['userId','deviceId','taskId'] }, 400);
     }
     var result = processSync(body);
     return jsonResp({ ok: true, taskId: body.taskId, version: result.version });
@@ -170,39 +169,20 @@ function formatTS(ts) {
 }
 
 /**
- * setCorsHeaders — Batch-set CORS headers via object syntax.
+ * jsonResp - Build a proper JSON response for Apps Script ContentService.
  * 
- * v6 CRITICAL: ContentService.TextOutput does NOT support individual
- * .setHeader(key, value) calls — they throw TypeError at runtime.
- * Instead, use the object-based setHeaders({ ... }) method.
+ * CRITICAL NOTE (v6 fix): 
+ * ContentService.createTextOutput() in Google Apps Script returns a TextOutput object.
+ * This object DOES NOT have .setHeader(), .getHeaders(), .setStatus(), or .setHeaders() methods.
+ * Those methods exist in browser Window/DOM APIs and Node.js response objects, but NOT in Apps Script.
+ * Attempting to call any of them produces: TypeError: xxx is not a function
  * 
- * Note: Apps Script Web Apps handle CORS natively via OPTIONS preflight.
- * These headers are redundant but included for completeness/explicitness.
- */
-function setCorsHeaders(output) {
-  output.setHeaders({
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
-  });
-}
-
-/**
- * jsonResp — Build a proper JSON response for Apps Script ContentService.
- * 
- * Supported methods on ContentService.TextOutput:
- *   - createTextOutput(string)    ← creates output with body content
- *   - setMimeType(mimeType)       ← sets Content-Type header
- *   - setHeaders(object)          ← batch-set headers via object
- * 
- * NOT supported (will throw TypeError):
- *   - .setHeader(key, value)      ← does not exist
- *   - .getHeaders()               ← does not exist
- *   - .setStatus(code)            ← Apps Script always returns HTTP 200
+ * CORRECT approach:
+ * - Use setMimeType(ContentService.MimeType.JSON) (this IS available on TextOutput)
+ * - Do NOT set headers manually (Apps Script web app framework handles CORS automatically)
  */
 function jsonResp(obj) {
   var output = ContentService.createTextOutput(JSON.stringify(obj));
   output.setMimeType(ContentService.MimeType.JSON);
-  setCorsHeaders(output);
   return output;
 }
