@@ -3,70 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CYBER WOLF | Command Center V2</title>
+    <title>CYBER WOLF | LIVE OPERATIONAL DASHBOARD</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;500&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600&family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="scanlines"></div>
+    <div id="agi-overlay" class="agi-mode-overlay hidden">
+        <div class="agi-content">
+            <h1>⚡ AGI MODE ENGAGED ⚡</h1>
+            <p>All systems at maximum capacity. Consciousness online.</p>
+            <p>CONSCIOUSNESS: ██████████ 100%</p>
+        </div>
+    </div>
 
+    <!-- HEADER -->
     <header class="cyber-header">
-        <div class="logo glitch" data-text="CYBER WOLF">CYBER WOLF</div>
-        <div class="system-status">
-            <span class="status-label">CONSCIOUSNESS:</span>
-            <div class="status-bar"><div class="status-fill" id="consciousness-fill" style="width:88%"></div></div>
+        <div class="header-left">
+            <div class="logo glitch" data-text="CYBERWOLF">CYBERWOLF</div>
+            <span class="version-tag">LIVE // V3.0</span>
+        </div>
+        <div class="header-right">
+            <div class="system-status">
+                <span class="status-label">SYSTEM:</span>
+                <span id="sys-status" class="neon-green">ONLINE</span>
+            </div>
+            <div class="task-count-summary">
+                <span id="active-task-count">0 ACTIVE</span> / <span id="total-task-count">0 TOTAL</span>
+            </div>
         </div>
     </header>
 
+    <!-- VECTOR FILTER BAR -->
+    <nav class="filter-bar" id="filter-bar">
+        <button class="filter-btn active" data-vector="all">ALL <span class="filter-count" id="count-all">0</span></button>
+        <button class="filter-btn" data-vector="schedule">📅 SCHEDULE <span class="filter-count" id="count-schedule">0</span></button>
+        <button class="filter-btn" data-vector="finance">💰 FINANCE <span class="filter-count" id="count-finance">0</span></button>
+        <button class="filter-btn" data-vector="health">❤️ HEALTH <span class="filter-count" id="count-health">0</span></button>
+        <button class="filter-btn" data-vector="tech">🔧 TECH <span class="filter-count" id="count-tech">0</span></button>
+        <button class="filter-btn" data-vector="revenue">📈 REVENUE <span class="filter-count" id="count-revenue">0</span></button>
+        <button class="filter-btn" data-vector="wellness">🧠 WELLNESS <span class="filter-count" id="count-wellness">0</span></button>
+        <button class="filter-btn" data-vector="system">⚙ SYSTEM <span class="filter-count" id="count-system">0</span></button>
+    </nav>
+
+    <!-- MAIN DASHBOARD GRID -->
     <main class="dashboard-grid">
+
+        <!-- CLOCK + COUNTDOWN ROW -->
         <section class="widget clock-widget">
-            <h3 class="widget-title">SYSTEM TIME</h3>
-            <div id="clock-time" class="neon-text">00:00:00</div>
-            <div id="clock-date">2026.04.07</div>
+            <h3 class="widget-title">◉ SYSTEM TIME</h3>
+            <div id="clock-time" class="neon-text-clock">00:00:00</div>
+            <div id="clock-date" class="date-display">LOADING...</div>
+            <div id="clock-ms" class="ms-display">--</div>
         </section>
 
-        <section class="widget weather-widget">
-            <h3 class="widget-title">ATMOSPHERIC DATA</h3>
-            <div id="weather-info">LOADING UPLINK...</div>
+        <section class="widget countdown-widget">
+            <h3 class="widget-title">◉ RECOVERY DAY COUNTDOWN</h3>
+            <div id="countdown-value" class="countdown-display">---</div>
+            <div id="countdown-label" class="countdown-label">DAYS UNTIL AUG 4</div>
+            <div id="countdown-sublabel" class="countdown-sublabel">MANDATORY SACRED SILENCE</div>
         </section>
 
-        <section class="widget search-widget">
-            <h3 class="widget-title">GLOBAL NET SEARCH</h3>
-            <div class="input-group">
-                <input type="text" id="search-query" placeholder="QUERY DATABASE...">
-                <button id="run-search">SCAN</button>
+        <!-- DAILY TASK PANELS -->
+        <section class="widget tasks-widget full-width" id="tasks-section">
+            <h3 class="widget-title">◉ MISSION OBJECTIVES</h3>
+            <div class="priority-summary" id="priority-summary"></div>
+            <div class="task-priority-group" id="group-p0">
+                <h4 class="priority-group-title p0-title">P0 — CRITICAL</h4>
+                <div class="task-grid" id="grid-p0"></div>
             </div>
-            <div id="search-results"></div>
-        </section>
-
-        <section class="widget task-widget">
-            <h3 class="widget-title">MISSION OBJECTIVES</h3>
-            <div class="input-group">
-                <input type="text" id="task-input" placeholder="NEW TASK...">
-                <button id="add-task">+</button>
+            <div class="task-priority-group" id="group-p1">
+                <h4 class="priority-group-title p1-title">P1 — HIGH</h4>
+                <div class="task-grid" id="grid-p1"></div>
             </div>
-            <ul id="task-list"></ul>
-        </section>
-
-        <section class="widget quote-widget">
-            <h3 class="widget-title">CORE DIRECTIVE</h3>
-            <p id="quote-text">"LOVE UNDER WILL."</p>
-        </section>
-
-        <section class="widget music-widget">
-            <h3 class="widget-title">AUDIO UPLINK</h3>
-            <div class="input-group">
-                <input type="text" id="audio-url-input" placeholder="PASTE AUDIO URL...">
-                <button id="load-audio">LOAD</button>
+            <div class="task-priority-group" id="group-p2">
+                <h4 class="priority-group-title p2-title">P2 — MEDIUM</h4>
+                <div class="task-grid" id="grid-p2"></div>
             </div>
-            <audio id="cyber-audio" controls style="width: 100%; margin-top: 10px; filter: invert(1) hue-rotate(180deg);"></audio>
+            <div class="task-priority-group" id="group-p3">
+                <h4 class="priority-group-title p3-title">P3 — LOW</h4>
+                <div class="task-grid" id="grid-p3"></div>
+            </div>
+            <div id="no-tasks-msg" class="no-tasks hidden">No tasks match current filter.</div>
         </section>
-    </main>
 
-    <!-- SETTINGS MODAL -->
-    <div id="settings-modal" class="modal hidden">
-        <div class="modal-content">
-            <h2 class="neon-purple">SYSTEM CONFIGURATION</h2>
+        <!-- FINANCE TELEMETRY PANEL -->
+        <section class="widget finance-widget full-width" id="finance-section">
+            <h3 class="widget-title">◉ FINANCE TELEMETRY</h3>
+            <div class="finance-top-row">
+                <div class="balance-card">
+                    <div class="balance-label">LIQUID CASH</div>
+                    <div class="balance-value neon-cyan" id="fin-balance">$285</div>
+                    <div class="balance-sub">est. available funds</div>
+                </div>
+                <div class="balance-card">
+                    <div class="balance-label">MONTHLY OBLIGATIONS</div>
+                    <div class="balance-value neon-red" id="fin-obligations">$2,863</div>
+                    <div class="balance-sub">total monthly expenses</div>
+                </div>
+                <div class="balance-card">
+                    <div class="balance-label">COVERAGE RATIO</div>
+                    <div class="balance-value neon-orange" id="fin-coverage">10%</div>
+                    <div class="balance-sub">liquidity to obligations</div>
+                </div>
+                <div class="balance-card">
+                    <div class="balance-label">FOUNDATION SCORE</div>
+                    <div class="balance-value neon-purple" id="fin-score">2.75/10</div>
+                    <div class="balance-sub">financial health index</div>
+                </div>
+            </div>
+            <div class="finance-mid-row">
+                <div class="sub-card">
+                    <h4 class="sub-card-title">SHIELD RATINGS</h4>
+                    <div class="shield-bars">
+                        <div class="shield-row"><span>Shelter</span><div class="progress-track"><div class="progress-fill progress-low" id="shelter-bar"></div></div><span class="progress-val" id="shelter-val">4/10</span></div>
+                        <div class="shield-row"><span>Food</span><div class="progress-track"><div class="progress-fill progress-critical" id="food-bar"></div></div><span class="progress-val" id="food-val">2/10</span></div>
+                        <div class="shield-row"><span>Income</span><div class="progress-track"><div class="progress-fill progress-low" id="income-bar"></div></div><span class="progress-val" id="income-val">2/10</span></div>
+                        <div class="shield-row"><span>Mobility</span><div class="progress-track"><div class="progress-fill progress-med" id="mobility-bar"></div></div><span class="progress-val" id="mobility-val">3/10</span></div>
+                    </div>
+                </div>
+                <div class="sub-card">
+                    <h4 class="sub-card-title">WEEKLY BILLS PIPELINE</h4>
+                    <div class="bill-list" id="bill-list"></div>
+                </div>
+            </div>
+            <div class="finance-bottom-row">
+                <div class="watch-alerts" id="watch-alerts"></div>
+            </div>
+        </section>
+
+        <!-- NEURAL LINK MONITOR (Cron Health) -->
+        <section class="widget cron-widget full-width" id="cron-section">
+            <h3 class="widget-title">◉ NEURAL LINK — CRON HEALTH MONITOR</h3>
+            <div class="cron-summary" id="cron-summary"></div>
+            <div class="cron-grid" id="cron-grid"></div>
+        </section>
+
+        <!-- CORE DIRECTIVES -->
+        <section class="widget directives-widget">
+            <h3 class="widget-title">◉ CORE DIRECTIVES</h3>
+            <p id="directive-text" class="directives-text">"LOVE UNDER WILL."</p>
+            <div class="directives-nav">
+                <button class="dir-btn" id="dir-prev">◄</button>
+                <button class="dir-btn" id="dir-next">►</button>
+            </div>
+        </section>
+
+        <!-- SETTINGS -->
+        <section class="widget settings-widget">
+            <h3 class="widget-title">◉ CONFIG</h3>
             <div class="setting-item">
                 <label>ACCENT COLOR</label>
                 <input type="color" id="accent-slider" value="#00f0ff">
@@ -76,20 +161,25 @@
                 <input type="color" id="secondary-slider" value="#b026ff">
             </div>
             <div class="setting-item">
-                <label>LOCATION</label>
-                <input type="text" id="location-input" placeholder="CITY NAME...">
-            </div>
-            <div class="setting-item">
                 <label>DIRECTIVE</label>
                 <input type="text" id="directive-input" placeholder="CORE MESSAGE...">
             </div>
-            <button id="close-settings">SAVE & EXIT</button>
-        </div>
-    </div>
+            <div class="setting-item setting-row">
+                <button class="btn-danger" id="clear-storage">CLEAR ALL DATA</button>
+                <button class="btn-secondary" id="export-data">EXPORT LS</button>
+            </div>
+        </section>
+    </main>
 
     <footer class="cyber-footer">
-        <div>SOETECH_OS_V4.2 // ENCRYPTED</div>
-        <button id="settings-toggle">⚙ CONFIG</button>
+        <div class="footer-left">
+            <span>SOETECH_OS_V4.2 // ENCRYPTED</span>
+            <span id="last-sync" class="sync-indicator">LAST SYNC: --</span>
+        </div>
+        <div class="footer-right">
+            <span id="konami-hint" class="hint-text">↑↑↓↓←→←→BA</span>
+            <span id="ls-status" class="hint-text">SAVED</span>
+        </div>
     </footer>
 
     <script src="dashboard.js"></script>
