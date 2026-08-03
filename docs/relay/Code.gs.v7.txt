@@ -1,28 +1,15 @@
 /**
- * CyberWolf Dashboard — Google Sheets Bridge Relay (v6)
+ * CyberWolf Dashboard — Google Sheets Bridge Relay (v7)
  * 
  * Server-side Apps Script middleware between browser dashboard
- * and Google Sheets. Handles CORS, JSON parsing, task sync.
+ * and Google Sheets. Handles JSON parsing, task sync.
  * 
- * v6 FIX: Corrected ALL Apps Script ContentService patterns.
- *   - Individual .setHeader(key, value) calls → NOT SUPPORTED in Apps Script
- *   - Fixed: output.setHeaders({...object...}) for CORS batch-header injection
- *   - Fixed: e.postData.getDataAsString() instead of e.postData.contents
- *   - doOptions() removed — Apps Script Web App handles OPTIONS preflight natively
- *   - Apps Script always returns HTTP 200; errors communicated via JSON body
- * 
- * DEPLOYMENT:
- * 1. Open your Google Sheet "CyberWolf-Sync"
- * 2. Extensions > Apps Script
- * 3. DELETE ALL existing code
- * 4. Paste this entire code block
- * 5. File > Save (project name: CyberWolf-Sync-Relay)
- * 6. Deploy > New deployment > Select type: Web app
- *    - Execute as: Me
- *    - Who has access: Anyone
- * 7. Click Deploy → authorize permissions
- * 8. Copy the new Web App URL
- * 9. Send URL back to CIPHER for dashboard.js update
+ * v7 FIX: Corrected ALL Apps Script-specific patterns.
+ *   - e.postData.contents → e.postData.getDataAsString() (correct API)
+ *   - jsonResp() stripped of unused status param — Apps Script always returns 200
+ *   - NO getHeaders(), NO setHeader(), NO setStatus() — none exist in Apps Script
+ *   - ONLY supported methods: createTextOutput(str), setMimeType(type)
+ *   - Apps Script Web App framework handles CORS automatically
  */
 
 // ─── Constants ──────────────────────────────────────────────
@@ -170,39 +157,22 @@ function formatTS(ts) {
 }
 
 /**
- * setCorsHeaders — Batch-set CORS headers via object syntax.
- * 
- * v6 CRITICAL: ContentService.TextOutput does NOT support individual
- * .setHeader(key, value) calls — they throw TypeError at runtime.
- * Instead, use the object-based setHeaders({ ... }) method.
- * 
- * Note: Apps Script Web Apps handle CORS natively via OPTIONS preflight.
- * These headers are redundant but included for completeness/explicitness.
- */
-function setCorsHeaders(output) {
-  output.setHeaders({
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
-  });
-}
-
-/**
  * jsonResp — Build a proper JSON response for Apps Script ContentService.
  * 
- * Supported methods on ContentService.TextOutput:
+ * CRITICAL (v7): Apps Script ContentService.TextOutput only supports:
  *   - createTextOutput(string)    ← creates output with body content
  *   - setMimeType(mimeType)       ← sets Content-Type header
- *   - setHeaders(object)          ← batch-set headers via object
  * 
- * NOT supported (will throw TypeError):
- *   - .setHeader(key, value)      ← does not exist
- *   - .getHeaders()               ← does not exist
- *   - .setStatus(code)            ← Apps Script always returns HTTP 200
+ * DOES NOT SUPPORT (will throw TypeError at runtime):
+ *   - .setHeader(key, value)      ← does not exist in Apps Script
+ *   - .getHeaders()               ← does not exist in Apps Script
+ *   - .setStatus(code)            ← does not exist in Apps Script
+ * 
+ * Apps Script Web App framework handles CORS automatically via OPTIONS preflight.
+ * HTTP status is always 200 — errors are communicated via JSON body structure.
  */
 function jsonResp(obj) {
   var output = ContentService.createTextOutput(JSON.stringify(obj));
   output.setMimeType(ContentService.MimeType.JSON);
-  setCorsHeaders(output);
   return output;
 }
