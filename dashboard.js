@@ -4,6 +4,10 @@
    V3.1 — Data embedded from VITALIS output
    ============================================ */
 
+// ===== WEBHOOK NOTIFICATION CONFIG =====
+// CyberWolf Dashboard → Hermes Agent task completion bridge
+// Architecture: Direct Webhook (ARCHON Spec v1.0, Aug 3, 2026)
+const CYBERWOLF_WEBHOOK_URL = '/api/v1/webhooks/cyberwolf-dashboard';
 // ===== ACCESS GATE =====
 const AUTH_CODE = 'SOETECH';
 (function initGate() {
@@ -209,6 +213,34 @@ function saveCompletions() {
         updateLSIndicator();
     } catch (e) {
         console.error('[CyberWolf] Save failed:', e);
+    }
+}
+
+// ===== WEBHOOK NOTIFICATION: CyberWolf → Hermes =====
+function notifyHermes(taskId, wasCompleted) {
+    var task = ALL_TASKS.find(function(t) { return t.id === taskId; });
+    if (!task) return;
+    try {
+        fetch(CYBERWOLF_WEBHOOK_URL, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                event: wasCompleted ? 'task_completed' : 'task_restored',
+                taskId: taskId,
+                taskTitle: task.title || '',
+                taskVector: task.vector || '',
+                taskPriority: task.priority || '',
+                remainingCompleted: appState.completedTaskIds.size,
+                totalTasks: ALL_TASKS.length,
+                timestamp: new Date().toISOString()
+            }),
+            signal: AbortSignal.timeout(5000)
+        }).catch(function(e) {
+            // Silent fail — UI never affected
+            console.warn('[CyberWolf] Webhook notification failed:', e.message);
+        });
+    } catch (e) {
+        console.warn('[CyberWolf] Webhook setup failed:', e.message);
     }
 }
 
@@ -734,7 +766,9 @@ function setupEventListeners() {
         const taskId = card.dataset.id;
         if (!taskId) return;
 
-        if (appState.completedTaskIds.has(taskId)) {
+        var wasCompleted = appState.completedTaskIds.has(taskId);
+
+        if (wasCompleted) {
             appState.completedTaskIds.delete(taskId);
             flashStatus('RESTORED', '#ffcc00');
         } else {
@@ -743,6 +777,7 @@ function setupEventListeners() {
         }
         saveCompletions();
         renderAll();
+        notifyHermes(taskId, !wasCompleted);
     });
 
     // Directive navigation
