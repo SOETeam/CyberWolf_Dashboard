@@ -1,0 +1,75 @@
+# =============================================================
+# CyberWolf Dashboard — Task Change Notification to Nyx
+#
+# Triggered by: repository_dispatch event_type 'task-change'
+# From: Cloudflare Worker relay (via GitHub API dispatch endpoint)
+# Destination: Hermes Agent webhook via Cloudflare Tunnel
+#
+# NOTE: This workflow requires the Hermes gateway to be
+# accessible via a Cloudflare Tunnel (cloudflared).
+# The tunnel URL must be set as environment variable
+# NYX_TUNNEL_URL in this repository's Settings > Secrets.
+# =============================================================
+
+name: Task Change Notification
+
+on:
+  repository_dispatch:
+    types: [task-change]
+
+jobs:
+  notify-nyx:
+    name: Forward task change to Nyx
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Receive task-change event
+        run: |
+          echo "Received repository_dispatch event"
+          echo "Event type: ${{ github.event.client_payload.event }}"
+          echo "Task ID: ${{ github.event.client_payload.taskId }}"
+          echo "Task Title: ${{ github.event.client_payload.taskTitle }}"
+          echo "Timestamp: ${{ github.event.client_payload.timestamp }}"
+
+      - name: Send webhook to Hermes Gateway
+        env:
+          NYX_TUNNEL_URL: ${{ secrets.NYX_TUNNEL_URL }}
+        run: |
+          if [ -z "$NYX_TUNNEL_URL" ]; then
+            echo "::warning::NYX_TUNNEL_URL not set — skipping webhook delivery"
+            exit 0
+          fi
+
+          PAYLOAD=$(cat <<PAYLOADEOF
+{
+  "event": "${{ github.event.client_payload.event }}",
+  "taskId": "${{ github.event.client_payload.taskId }}",
+  "taskTitle": "${{ github.event.client_payload.taskTitle }}",
+  "taskVector": "${{ github.event.client_payload.taskVector }}",
+  "taskPriority": "${{ github.event.client_payload.taskPriority }}",
+  "remainingCompleted": ${{ github.event.client_payload.remainingCompleted }},
+  "totalTasks": ${{ github.event.client_payload.totalTasks }},
+  "timestamp": "${{ github.event.client_payload.timestamp }}",
+  "source": "github-action-cross-device-sync"
+}
+PAYLOADEOF
+          )
+
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            --max-time 10 \
+            --connect-timeout 5 \
+            "${NYX_TUNNEL_URL}/webhooks/cyberwolf-dashboard" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d "${PAYLOAD}")
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✓ Webhook delivered successfully (HTTP ${HTTP_CODE})"
+          else
+            echo "⚠ Webhook returned HTTP ${HTTP_CODE} — deferred (Hermes may be offline)"
+            # Non-fatal: don't fail the workflow; Hermes may be restarting
+          fi
+
+      - name: Log completion
+        if: always()
+        run: echo "Notification job finished at $(date -u +%Y-%m-%dT%H:%M:%SZ)"

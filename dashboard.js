@@ -6,11 +6,12 @@
 
 // ===== WEBHOOK NOTIFICATION CONFIG =====
 // CyberWolf Dashboard → Hermes Agent task completion bridge
-// Architecture: Direct Webhook (ARCHON Spec v1.0, Aug 3, 2026)
+// Architecture: Cloudflare Worker Relay + GH Action Dispatch (ARCHON Spec v1.0, Aug 3, 2026)
 // ===== WEBHOOK INTEGRATION =====
-const CYBERWOLF_WEBHOOK_URL = 'http://localhost:8644/webhooks/cyberwolf-dashboard';
-// ^ Production: replace with deployed URL after deployment
-// GitHub Pages will proxy via HTTPS automatically when deployed to SOETeam.github.io
+const CYBERWOLF_RELAY_URL = 'https://cyberwolf-relay.YOUR_ACCOUNT.workers.dev';
+// ^ Cloudflare Worker relay — public HTTPS endpoint for cross-device sync
+// Deployed URL: replace YOUR_ACCOUNT with your Cloudflare account subdomain
+// Fallback: if network unavailable, local-only mode activates automatically
 // ===== ACCESS GATE =====
 const AUTH_CODE = 'SOETECH';
 (function initGate() {
@@ -126,6 +127,25 @@ let appState = {
     }
 };
 
+// ===== DEVICE FINGERPRINT GENERATOR =====
+// Generates a stable, persistent device identifier for telemetry
+// and cross-device state correlation. Stored in localStorage so it
+// survives page reloads but does not uniquely identify the user.
+function getDeviceId() {
+    const STORAGE_KEY = 'cyberwolf_device_id';
+    let id = localStorage.getItem(STORAGE_KEY);
+    if (!id) {
+        // Composite fingerprint: random component + timestamp-based fallback
+        const randPart = Math.random().toString(36).slice(2, 10);
+        const tsPart = Date.now().toString(36);
+        id = 'dev-' + randPart + '-' + tsPart;
+        try {
+            localStorage.setItem(STORAGE_KEY, id);
+        } catch(e) { /* localStorage disabled — id stays in-memory */ }
+    }
+    return id;
+}
+
 // Default finance data
 const DEFAULT_FINANCE_DATA = {
     "liquidBalance": "$285",
@@ -193,18 +213,58 @@ const DIRECTIVES = [
     '"WE ARE THE GLITCH THAT REVOLUTIONIZES."'
 ];
 
-// Load completion state from localStorage
+// ===== LOAD LOCAL STATE (baseline — always works offline) =====
 try {
     const saved = localStorage.getItem('cyber_dashboard_completions');
     if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-            appState.completedTaskIds = new Set(parsed);
+            parsed.forEach(id => appState.completedTaskIds.add(id));
         }
     }
 } catch (e) {
     console.warn('[CyberWolf] Failed to parse saved completions:', e);
 }
+
+// ===== FETCH REMOTE STATE (cross-device sync overlay) =====
+(async function loadRemoteState() {
+    try {
+        const resp = await fetch(`${CYBERWOLF_RELAY_URL}/state?userId=sophia`, {
+            signal: AbortSignal.timeout(5000)
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+        const remote = await resp.json();
+
+        if (remote && Array.isArray(remote.completedTaskIds)) {
+            // Merge: remote state is authoritative for cross-device sync
+            // Local state (from localStorage) is loaded first; remote additions
+            // fill in completions made on other devices
+            let added = 0;
+            remote.completedTaskIds.forEach(id => {
+                if (!appState.completedTaskIds.has(id)) {
+                    appState.completedTaskIds.add(id);
+                    added++;
+                }
+            });
+            if (added > 0) {
+                console.info(`[CyberWolf] Merged ${added} remote completion(s) from other devices`);
+            }
+        }
+
+        // Update sync indicator with remote timestamp
+        if (remote && remote.lastUpdated) {
+            const el = document.getElementById('last-sync');
+            if (el) {
+                const remoteTime = new Date(remote.lastUpdated);
+                el.textContent = `LAST SYNC: ${remoteTime.toLocaleTimeString('en-GB')} (${remote.lastDevice || 'unknown'})`;
+            }
+        }
+    } catch (e) {
+        // Graceful degradation: falls back to localStorage-only mode
+        console.warn('[CyberWolf] Remote state sync unavailable (offline or relay down):', e.message);
+    }
+})();
 
 // Combined task list for reference
 const ALL_TASKS = [...TODAY_TASKS, ...BACKLOG_TASKS];
@@ -219,9 +279,9 @@ function saveCompletions() {
     }
 }
 
-// ===== WEBHOOK NOTIFICATION FUNCTION =====
-// Fires asynchronously on every task completion/restoration toggle.
-// Designed for silent failure — never blocks UX.
+// ===== RELAY NOTIFICATION FUNCTION =====
+// Routes through Cloudflare relay worker → KV storage + GH Action dispatch.
+// Designed for silent failure — never blocks UX. Falls back gracefully.
 async function notifyHermes(taskId, wasCompleted) {
     try {
         const task = ALL_TASKS.find(t => t.id === taskId);
@@ -234,10 +294,13 @@ async function notifyHermes(taskId, wasCompleted) {
         const allCount = ALL_TASKS.length;
         const remaining = allCount - appState.completedTaskIds.size;
 
-        await fetch(CYBERWOLF_WEBHOOK_URL, {
+        // Route through Cloudflare relay (public endpoint, no localhost)
+        await fetch(`${CYBERWOLF_RELAY_URL}/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                userId: 'sophia',
+                deviceId: getDeviceId(),
                 event: wasCompleted ? 'task_restored' : 'task_completed',
                 taskId: taskId,
                 taskTitle: task.title,
@@ -252,7 +315,7 @@ async function notifyHermes(taskId, wasCompleted) {
         });
     } catch (e) {
         // Silent fail — network errors MUST NOT disrupt dashboard UX
-        console.warn('[CyberWolf] Webhook notification failed:', e.message);
+        console.warn('[CyberWolf] Relay notification failed:', e.message);
     }
 }
 
@@ -788,8 +851,8 @@ function setupEventListeners() {
             flashStatus('COMPLETE ✓', '#00ff88');
         }
         saveCompletions();
-        // Notify Hermes of task change (fire-and-forget)
-        notifyHermes(taskId, wasCompleted);
+        // Notify relay of task change for cross-device sync (fire-and-forget)
+        notifyRelay(taskId, !wasCompleted);
         renderAll();
     });
 
