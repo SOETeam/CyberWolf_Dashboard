@@ -177,6 +177,18 @@ body {
     grid-column: 1 / -1;
 }
 
+/* Container for shared sections — placed below dashboard-grid, visually separated */
+.shared-widgets {
+    width: 100%;
+    flex-shrink: 0;
+    padding: 15px 20px;
+    border-top: 1px solid rgba(0, 240, 255, 0.15);
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
 /* Vector filter bar */
 .filter-bar {
     display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 20px;
@@ -222,7 +234,7 @@ body {
     flex-direction: column;
     gap: 15px;
     padding: 15px 20px;
-    overflow-y: auto;
+    overflow: hidden; /* contains all children, clips overlapping content */
     max-height: calc(100vh - 200px);
 }
 
@@ -239,6 +251,8 @@ body {
     /* Panel content renders above overlapping shared widgets on wide screens */
     position: relative;
     z-index: 1;
+    isolation: isolate; /* creates new stacking context, keeps panel on top */
+    overflow-y: auto; /* allows panel content to scroll within fixed height */
 }
 .view-panel > section {
     flex-shrink: 0;
