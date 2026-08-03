@@ -51,6 +51,14 @@
         <button class="toggle-btn" onclick="switchView('agenda')" id="btn-agenda">◈ AGENDA</button>
     </nav>
 
+    <!-- SYNC BUTTON BAR -->
+    <div class="sync-btn-container">
+        <button id="syncBtn" onclick="doSync()">
+            <span class="btn-spinner"></span>
+            ⟐ SYNC
+        </button>
+    </div>
+
     <!-- MAIN DASHBOARD GRID -->
     <main class="dashboard-grid">
 
@@ -260,6 +268,9 @@
             <span id="ls-status" class="hint-text">SAVED</span>
         </div>
     </footer>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container"></div>
 
     <script src="dashboard.js"></script>
     </div>

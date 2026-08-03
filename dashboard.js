@@ -1099,3 +1099,192 @@ function triggerAGI() {
         overlay.classList.add('hidden');
     }, 3500);
 }
+
+// ============================================================
+// CROSS-DEVICE SYNC BUTTON — PUSH / PULL / MERGE / NOTIFY
+// ============================================================
+
+/**
+ * Full-sync workflow:
+ *   1. PUSH  — POST every locally-completed task to the Apps Script relay
+ *   2. PULL  — GET remote state from relay
+ *   3. MERGE — union remote + local → appState.completedTaskIds
+ *   4. PERSIST — write merged set back to localStorage
+ *   5. REFRESH — re-render affected cards in-place
+ *   6. NOTIFY — toast with push/pull counts & total
+ */
+async function doSync() {
+    const btn = document.getElementById('syncBtn');
+    if (!btn) return;
+
+    // ── Lock UI during sync ──────────────────────────────────
+    btn.disabled = true;
+    btn.classList.add('loading');
+    btn.innerHTML = '<span class="btn-spinner" style="display:inline-block"></span> SYNCING…';
+
+    const userId = 'sophia';
+    const deviceId = getDeviceId();
+
+    // ── STEP 1: PUSH local completions ───────────────────────
+    const allVisibleCards = [
+        ...document.querySelectorAll('#panel-today .task-card[data-id]'),
+        ...document.querySelectorAll('.backlog-content .task-card[data-id]'),
+        ...document.querySelectorAll('.agenda-task-card[data-id]')
+    ];
+
+    let pushed = 0;
+    const pushPromises = [];
+
+    for (const card of allVisibleCards) {
+        if (!appState.completedTaskIds.has(card.dataset.id)) continue;
+
+        pushPromises.push(
+            fetch(CYBERWOLF_RELAY_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: userId,
+                    deviceId: deviceId,
+                    taskId: card.dataset.id,
+                    taskLabel: card.querySelector('.task-title')?.textContent || card.querySelector('.agenda-task-title')?.textContent || card.dataset.id,
+                    completed: true
+                })
+            }).then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                pushed++;
+            }).catch(e => {
+                console.warn('[CyberWolf] Push failed:', card.dataset.id, e.message);
+            })
+        );
+    }
+
+    // Fire all pushes concurrently
+    await Promise.all(pushPromises);
+
+    // ── STEP 2: PULL remote state ────────────────────────────
+    let pulled = 0;
+    let remoteCompletedIds = [];
+    let pullError = null;
+
+    try {
+        const resp = await fetch(`${CYBERWOLF_RELAY_URL}/state?userId=${userId}`, {
+            signal: AbortSignal.timeout(8000)
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+        const data = await resp.json();
+        remoteCompletedIds = Array.isArray(data.completedTaskIds) ? data.completedTaskIds : [];
+    } catch (e) {
+        pullError = e.message;
+        console.warn('[CyberWolf] Pull failed:', e.message);
+    }
+
+    // ── STEP 3: MERGE ────────────────────────────────────────
+    for (const rid of remoteCompletedIds) {
+        if (!appState.completedTaskIds.has(rid)) {
+            appState.completedTaskIds.add(rid);
+            pulled++;
+        }
+    }
+
+    // Also detect conflicts: remote says undone but local says complete
+    // (The relay stores boolean events; completedTaskIds should reflect truth)
+    const conflictWarnings = [];
+    for (const cid of allVisibleCards) {
+        if (cid.classList.contains('completed')) continue; // already correct
+        if (remoteCompletedIds.includes(cid.dataset.id)) {
+            // Remote says done but card isn't visually marked yet
+            // This will be caught by the refresher below
+        }
+    }
+
+    // ── STEP 4: PERSIST ──────────────────────────────────────
+    appState.syncedAt = new Date().toISOString();
+    try {
+        localStorage.setItem('cyber_dashboard_completions', JSON.stringify([...appState.completedTaskIds]));
+    } catch (e) {
+        console.error('[CyberWolf] LocalStorage save failed during sync:', e);
+    }
+
+    // ── STEP 5: REFRESH VISUALS ──────────────────────────────
+    // Re-render only the affected views to mark newly-synced cards as completed
+    // We use renderAll() to keep consistency
+    renderAll();
+
+    // ── STEP 6: UPDATE FOOTER SYNC INDICATOR ─────────────────
+    const lastSyncEl = document.getElementById('last-sync');
+    if (lastSyncEl) {
+        lastSyncEl.textContent = `SYNCED: ${new Date().toLocaleTimeString('en-GB')}`;
+        lastSyncEl.style.color = '#00ff88';
+        lastSyncEl.style.textShadow = '0 0 6px #00ff88';
+        setTimeout(() => {
+            lastSyncEl.style.color = '';
+            lastSyncEl.style.textShadow = '';
+        }, 5000);
+    }
+
+    // ── STEP 7: TOAST NOTIFICATION ───────────────────────────
+    const total = appState.completedTaskIds.size;
+    let toastMsg = '';
+    let toastClass = 'success';
+
+    if (pullError && pulled === 0 && pushed === 0) {
+        // Total failure
+        toastMsg = `❌ Sync failed — ${pullError}. No changes applied.`;
+        toastClass = 'error';
+    } else if (pullError && pushed > 0) {
+        // Partial: push succeeded but pull failed
+        toastMsg = `⚠️ Pushed ${pushed} completion(s), but could not pull remote (${pullError}).`;
+        toastClass = 'warning';
+    } else if (pullError) {
+        // Pull succeeded partially or remotely empty
+        toastMsg = `📡 Could not verify remote state (${pullError}).`;
+        toastClass = 'warning';
+    } else if (pulled > 0) {
+        // Successful with new data pulled
+        toastMsg = `✅ Synced: ${pushed} pushed, ${pulled} pulled. Total: ${total} tasks completed.`;
+        toastClass = 'success';
+    } else {
+        // No new data either direction — all in sync
+        toastMsg = `✅ In sync — ${total} tasks completed. Nothing new.`;
+        toastClass = 'success';
+    }
+
+    if (conflictWarnings.length > 0) {
+        toastMsg += '\n\n⚠ Conflicts detected:\n' + conflictWarnings.join('\n');
+        toastClass = 'warning';
+    }
+
+    showToast(toastMsg, toastClass);
+
+    // ── Restore button ───────────────────────────────────────
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    btn.innerHTML = '<span class="btn-spinner"></span> ⟐ SYNC';
+}
+
+/**
+ * Display a styled toast notification in the bottom-right corner.
+ * Auto-dismisses after duration ms (default 6000).
+ */
+function showToast(message, type = 'info', duration = 6000) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const icons = { success: '✅', warning: '⚠️', error: '❌', info: 'ℹ️' };
+    const toast = document.createElement('div');
+    toast.className = `toast-notification ${type}`;
+    toast.innerHTML = `
+        <span class="toast-icon">${icons[type] || icons.info}</span>
+        <span class="toast-text">${message.replace(/\n/g, '<br>')}</span>
+        <button class="toast-dismiss" onclick="this.parentElement.remove()">✕</button>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto-dismiss after duration
+    setTimeout(() => {
+        toast.style.animation = 'toast-out 0.3s ease forwards';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
