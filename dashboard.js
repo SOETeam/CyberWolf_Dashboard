@@ -8,7 +8,7 @@
 // CyberWolf Dashboard → Hermes Agent task completion bridge
 // Architecture: Google Sheets Bridge + Apps Script Serverless Relay (ORACLE Research, Aug 3, 2026)
 // ===== WEBHOOK INTEGRATION =====
-const CYBERWOLF_RELAY_URL = 'https://script.google.com/macros/s/AKfycbwCxjqSjr203Oz9dXbP3iTh7VZIMLWp_N1kOpFECX_R0vpBjvjs-EskjIyA6dc1svI1/exec';
+const CYBERWOLF_RELAY_URL = 'https://script.google.com/macros/s/AKfycbzTghYHJyA61-emacmmcLJ57lnbZ1zECDWDDTn0fUJBoTraHw27MrgMRpanQFruiZm3/exec';
 // ^ CyberWolf Sheets Bridge relay — deployed Aug 3, 2026 v2 by Sophia (Anyone access)
 // Cross-device sync: all devices GET /state, GET /push — zero CORS preflight
 // Nyx notified every 5 min via Hermes cron polling Sheet
