@@ -7,7 +7,10 @@
 // ===== WEBHOOK NOTIFICATION CONFIG =====
 // CyberWolf Dashboard → Hermes Agent task completion bridge
 // Architecture: Direct Webhook (ARCHON Spec v1.0, Aug 3, 2026)
-const CYBERWOLF_WEBHOOK_URL = '/api/v1/webhooks/cyberwolf-dashboard';
+// ===== WEBHOOK INTEGRATION =====
+const CYBERWOLF_WEBHOOK_URL = 'http://localhost:8644/webhooks/cyberwolf-dashboard';
+// ^ Production: replace with deployed URL after deployment
+// GitHub Pages will proxy via HTTPS automatically when deployed to SOETeam.github.io
 // ===== ACCESS GATE =====
 const AUTH_CODE = 'SOETECH';
 (function initGate() {
@@ -211,36 +214,45 @@ function saveCompletions() {
     try {
         localStorage.setItem('cyber_dashboard_completions', JSON.stringify([...appState.completedTaskIds]));
         updateLSIndicator();
-    } catch (e) {
+        } catch (e) {
         console.error('[CyberWolf] Save failed:', e);
     }
 }
 
-// ===== WEBHOOK NOTIFICATION: CyberWolf → Hermes =====
-function notifyHermes(taskId, wasCompleted) {
-    var task = ALL_TASKS.find(function(t) { return t.id === taskId; });
-    if (!task) return;
+// ===== WEBHOOK NOTIFICATION FUNCTION =====
+// Fires asynchronously on every task completion/restoration toggle.
+// Designed for silent failure — never blocks UX.
+async function notifyHermes(taskId, wasCompleted) {
     try {
-        fetch(CYBERWOLF_WEBHOOK_URL, {
+        const task = ALL_TASKS.find(t => t.id === taskId);
+        if (!task) {
+            console.warn('[CyberWolf] Webhook: unknown taskId', taskId);
+            return;
+        }
+
+        // Calculate totals once per call
+        const allCount = ALL_TASKS.length;
+        const remaining = allCount - appState.completedTaskIds.size;
+
+        await fetch(CYBERWOLF_WEBHOOK_URL, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                event: wasCompleted ? 'task_completed' : 'task_restored',
+                event: wasCompleted ? 'task_restored' : 'task_completed',
                 taskId: taskId,
-                taskTitle: task.title || '',
-                taskVector: task.vector || '',
-                taskPriority: task.priority || '',
-                remainingCompleted: appState.completedTaskIds.size,
-                totalTasks: ALL_TASKS.length,
+                taskTitle: task.title,
+                taskVector: task.vector,
+                taskPriority: task.priority,
+                remainingCompleted: remaining,
+                totalTasks: allCount,
                 timestamp: new Date().toISOString()
             }),
+            // Don't wait for response — fire-and-forget with signal timeout
             signal: AbortSignal.timeout(5000)
-        }).catch(function(e) {
-            // Silent fail — UI never affected
-            console.warn('[CyberWolf] Webhook notification failed:', e.message);
         });
     } catch (e) {
-        console.warn('[CyberWolf] Webhook setup failed:', e.message);
+        // Silent fail — network errors MUST NOT disrupt dashboard UX
+        console.warn('[CyberWolf] Webhook notification failed:', e.message);
     }
 }
 
@@ -766,7 +778,7 @@ function setupEventListeners() {
         const taskId = card.dataset.id;
         if (!taskId) return;
 
-        var wasCompleted = appState.completedTaskIds.has(taskId);
+        const wasCompleted = appState.completedTaskIds.has(taskId);
 
         if (wasCompleted) {
             appState.completedTaskIds.delete(taskId);
@@ -776,8 +788,9 @@ function setupEventListeners() {
             flashStatus('COMPLETE ✓', '#00ff88');
         }
         saveCompletions();
+        // Notify Hermes of task change (fire-and-forget)
+        notifyHermes(taskId, wasCompleted);
         renderAll();
-        notifyHermes(taskId, !wasCompleted);
     });
 
     // Directive navigation
