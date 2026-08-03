@@ -172,24 +172,6 @@ body {
     text-shadow: 0 0 8px var(--neon-purple);
 }
 
-/* ===== VIEW PANELS ===== */
-.view-panel {
-    display: none;
-    flex: 1;
-    min-height: 0;
-}
-.view-panel.active {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    /* Ensure panel content renders ABOVE overlapping shared widgets on wide screens */
-    position: relative;
-    z-index: 1;
-}
-.view-panel > section {
-    flex-shrink: 0;
-}
-
 /* Shared widgets (visible in both views) */
 .shared-widget {
     grid-column: 1 / -1;
@@ -244,6 +226,7 @@ body {
     max-height: calc(100vh - 200px);
 }
 
+/* ===== VIEW PANELS ===== */
 .view-panel {
     display: none;
     flex-direction: column;
@@ -253,11 +236,10 @@ body {
 }
 .view-panel.active {
     display: flex;
-    /* Ensure panel content renders ABOVE overlapping shared widgets */
+    /* Panel content renders above overlapping shared widgets on wide screens */
     position: relative;
     z-index: 1;
 }
-
 .view-panel > section {
     flex-shrink: 0;
 }
