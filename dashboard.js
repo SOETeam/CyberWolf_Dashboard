@@ -228,9 +228,9 @@ try {
 }
 
 // ===== FETCH REMOTE STATE (cross-device sync overlay) =====
-(async function loadRemoteState() {
+async function loadRemoteState() {
     try {
-        const resp = await fetch(`${CYBERWOLF_RELAY_URL}/state?userId=sophia`, {
+        const resp = await fetch(`${CYBERWOLF_RELAY_URL}?action=state&userId=sophia`, {
             signal: AbortSignal.timeout(5000)
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -265,7 +265,7 @@ try {
         // Graceful degradation: falls back to localStorage-only mode
         console.warn('[CyberWolf] Remote state sync unavailable (offline or relay down):', e.message);
     }
-})();
+}
 
 // Combined task list for reference
 const ALL_TASKS = [...TODAY_TASKS, ...BACKLOG_TASKS];
@@ -295,7 +295,7 @@ async function notifyRelay(taskId, wasCompleted) {
         const remaining = allCount - appState.completedTaskIds.size;
         const userId = 'sophia'; // TODO: configurable per-user in future
 
-        await fetch(`${CYBERWOLF_RELAY_URL}/sync`, {
+        await fetch(`${CYBERWOLF_RELAY_URL}?action=sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
