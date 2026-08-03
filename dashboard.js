@@ -237,28 +237,51 @@ async function loadRemoteState() {
 
         const remote = await resp.json();
 
-        if (remote && Array.isArray(remote.completedTaskIds)) {
-            // Merge: remote state is authoritative for cross-device sync
-            // Local state (from localStorage) is loaded first; remote additions
-            // fill in completions made on other devices
+        // ---- Format detection & merge ----
+        // Relay v9+:    { userId, tasks: [{id,label,completed:true,...}], count }
+        // Legacy/API:   { completedTaskIds: [...], lastUpdated, lastDevice }
+        let remoteCompleted = [];
+
+        if (remote && Array.isArray(remote.tasks)) {
+            // Extract completed task IDs from task list (relay v9+)
+            remoteCompleted = remote.tasks
+                .filter(t => t.completed === true)
+                .map(t => t.id);
+        } else if (remote && Array.isArray(remote.completedTaskIds)) {
+            // Fallback: direct completed-task-id array (legacy / expected format)
+            remoteCompleted = remote.completedTaskIds;
+        }
+
+        if (remoteCompleted.length > 0) {
             let added = 0;
-            remote.completedTaskIds.forEach(id => {
+            remoteCompleted.forEach(id => {
                 if (!appState.completedTaskIds.has(id)) {
                     appState.completedTaskIds.add(id);
                     added++;
                 }
             });
             if (added > 0) {
-                console.info(`[CyberWolf] Merged ${added} remote completion(s) from other devices`);
+                console.info(`[CyberWolf] Merged ${added} remote completion(s) from other devices (${remoteCompleted.length} total remote)`);
             }
         }
 
         // Update sync indicator with remote timestamp
-        if (remote && remote.lastUpdated) {
+        if (remote) {
             const el = document.getElementById('last-sync');
             if (el) {
-                const remoteTime = new Date(remote.lastUpdated);
-                el.textContent = `LAST SYNC: ${remoteTime.toLocaleTimeString('en-GB')} (${remote.lastDevice || 'unknown'})`;
+                let timeStr = null;
+                if (remote.lastUpdated) {
+                    const remoteTime = new Date(remote.lastUpdated);
+                    if (!isNaN(remoteTime.getTime())) {
+                        timeStr = remoteTime.toLocaleTimeString('en-GB') + ' (' + (remote.lastDevice || 'unknown') + ')';
+                    }
+                }
+                if (remote.userId && !timeStr) {
+                    timeStr = remote.userId + ' · ' + (remote.count != null ? remote.count + ' tasks' : '');
+                }
+                if (timeStr) {
+                    el.textContent = 'LAST SYNC: ' + timeStr;
+                }
             }
         }
     } catch (e) {
