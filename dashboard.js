@@ -115,7 +115,7 @@ let appState = {
     config: JSON.parse(localStorage.getItem('cyber_config')) || {
         accentColor: '#00f0ff',
         secondaryColor: '#b026ff',
-        directive: DIRECTIVES[0].replace(/"/g, '')
+        directive: '"LOVE UNDER WILL."'
     }
 };
 
