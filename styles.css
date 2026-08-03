@@ -1,6 +1,7 @@
 /* ============================================
    CYBERWOLF DASHBOARD — LIVE OPERATIONAL UI
    Cyberpunk Aesthetic + Functional Components
+   Dual-View Layout (TODAY + AGENDA)
    ============================================ */
 
 :root {
@@ -102,7 +103,7 @@ body {
 }
 
 .version-tag {
-    font-size: 0.6rem; color: var(--neon-green, var(--green));
+    font-size: 0.6rem; color: var(--green);
     border: 1px solid var(--green); padding: 2px 8px; margin-left: 10px;
     animation: blink-slow 3s infinite;
 }
@@ -128,7 +129,59 @@ body {
 }
 .task-count-summary span { color: var(--neon-cyan); font-weight: 600; }
 
-/* ===== FILTER BAR ===== */
+/* ===== VIEW TOGGLE NAVIGATION ===== */
+.view-toggle {
+    display: flex; justify-content: center; gap: 8px; padding: 12px 20px;
+    background: rgba(0, 5, 20, 0.95);
+    border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+    z-index: 99;
+}
+
+.toggle-btn {
+    background: rgba(0, 15, 35, 0.5);
+    border: 1px solid rgba(0, 240, 255, 0.2);
+    color: var(--text-dim);
+    padding: 8px 28px; cursor: pointer;
+    font-family: 'Orbitron', sans-serif; font-size: 0.75rem;
+    letter-spacing: 3px; font-weight: 500;
+    transition: all 0.25s ease;
+    position: relative;
+    min-width: 140px; text-align: center;
+}
+
+.toggle-btn:hover {
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.15);
+    background: rgba(0, 20, 40, 0.7);
+}
+
+.toggle-btn.active {
+    background: rgba(0, 240, 255, 0.12);
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.25), inset 0 0 10px rgba(0, 240, 255, 0.08);
+    text-shadow: 0 0 8px var(--neon-cyan);
+}
+
+.toggle-btn.active.purple-active {
+    background: rgba(176, 38, 255, 0.12);
+    border-color: var(--neon-purple);
+    color: var(--neon-purple);
+    box-shadow: 0 0 20px rgba(176, 38, 255, 0.25), inset 0 0 10px rgba(176, 38, 255, 0.08);
+    text-shadow: 0 0 8px var(--neon-purple);
+}
+
+/* ===== VIEW PANELS ===== */
+.view-panel { display: none; }
+.view-panel.active { display: block; }
+
+/* Shared widgets (visible in both views) */
+.shared-widget {
+    grid-column: 1 / -1;
+}
+
+/* Vector filter bar */
 .filter-bar {
     display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 20px;
     border-bottom: 1px solid rgba(0, 240, 255, 0.2);
@@ -172,7 +225,7 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 15px; padding: 15px 20px;
     overflow-y: auto;
-    max-height: calc(100vh - 140px);
+    max-height: calc(100vh - 200px);
 }
 
 .widget {
@@ -327,7 +380,7 @@ body {
 
 .task-status-dot.active { background: var(--green); box-shadow: 0 0 4px var(--green); }
 .task-status-dot.flagged { background: var(--red); box-shadow: 0 0 4px var(--red); animation: blink-fast 1s infinite; }
-.task-status-dot.pending { background: var(--yellow, var(--p2-yellow)); }
+.task-status-dot.pending { background: var(--p2-yellow); }
 .task-status-dot.completed { background: #555; }
 
 @keyframes blink-fast {
@@ -339,6 +392,50 @@ body {
 .no-tasks {
     text-align: center; padding: 30px;
     color: var(--text-dim); font-size: 0.8rem;
+}
+
+/* ===== TIME BLOCK LABEL ===== */
+.time-block-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.6rem;
+    color: var(--neon-cyan);
+    background: rgba(0, 240, 255, 0.08);
+    border: 1px solid rgba(0, 240, 255, 0.2);
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    display: inline-block;
+    margin-bottom: 4px;
+}
+
+/* ===== BACKLOG COLLAPSIBLE SECTION ===== */
+.backlog-widget {
+    border-color: rgba(176, 38, 255, 0.3);
+}
+
+.backlog-toggle {
+    cursor: pointer;
+    user-select: none;
+    display: flex; justify-content: space-between; align-items: center;
+}
+
+.backlog-toggle:hover {
+    color: var(--neon-purple);
+    text-shadow: 0 0 6px var(--neon-purple);
+}
+
+.backlag-arrow {
+    font-size: 0.7rem;
+    transition: transform 0.3s ease;
+    display: inline-block;
+}
+
+.backlog-toggle.open .backlag-arrow {
+    transform: rotate(180deg);
+}
+
+.backlog-content {
+    transition: max-height 0.4s ease, opacity 0.3s ease;
 }
 
 /* ===== FINANCE PANEL ===== */
@@ -447,6 +544,153 @@ body {
 .watch-alert.info { border-color: var(--neon-cyan); color: var(--neon-cyan); background: rgba(0, 240, 255, 0.05); }
 
 .alert-icon { font-size: 0.8rem; }
+
+/* ===== AGENDA VIEWS ===== */
+.agenda-header-widget {
+    background: linear-gradient(135deg, rgba(255, 34, 68, 0.08), rgba(176, 38, 255, 0.08));
+    border-color: rgba(255, 34, 68, 0.3);
+}
+
+/* Agenda vector group */
+.agenda-vector-group {
+    margin-bottom: 16px;
+    border: 1px solid rgba(0, 240, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    background: rgba(0, 10, 25, 0.5);
+}
+
+.agenda-vector-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 12px;
+    background: rgba(0, 15, 35, 0.8);
+    border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+}
+
+.agenda-vector-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: var(--neon-cyan);
+}
+
+.agenda-vector-count {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+.agenda-vector-count.p0-only {
+    border-color: var(--p0-red);
+    color: var(--p0-red);
+    background: rgba(255, 34, 68, 0.1);
+}
+
+.agenda-vector-count.mixed {
+    border-color: var(--p1-orange);
+    color: var(--p1-orange);
+    background: rgba(255, 136, 0, 0.1);
+}
+
+.agenda-task-list {
+    padding: 8px;
+}
+
+.agenda-task-card {
+    background: rgba(0, 12, 28, 0.6);
+    border: 1px solid rgba(0, 240, 255, 0.15);
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.agenda-task-card:last-child { margin-bottom: 0; }
+
+.agenda-task-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+}
+
+.agenda-task-card.p0::before { background: var(--p0-red); }
+.agenda-task-card.p1::before { background: var(--p1-orange); }
+
+.agenda-task-card:hover {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 8px rgba(0, 240, 255, 0.15);
+}
+
+.agenda-task-card.completed {
+    opacity: 0.4;
+    border-style: dashed;
+}
+
+.agenda-task-card.completed .agenda-task-title {
+    text-decoration: line-through;
+}
+
+.agenda-task-top {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 3px;
+}
+
+.agenda-task-id {
+    font-size: 0.55rem; color: var(--text-dim); letter-spacing: 1px;
+}
+
+.agenda-task-status {
+    font-size: 0.55rem;
+    padding: 1px 6px;
+    border-radius: 2px;
+}
+
+.agenda-task-status.flagged {
+    border: 1px solid var(--red);
+    color: var(--red);
+}
+
+.agenda-task-status.active {
+    border: 1px solid var(--green);
+    color: var(--green);
+}
+
+.agenda-task-status.pending {
+    border: 1px solid var(--p2-yellow);
+    color: var(--p2-yellow);
+}
+
+.agenda-task-title {
+    font-size: 0.72rem;
+    line-height: 1.3;
+    color: var(--text-main);
+    margin-bottom: 4px;
+}
+
+.agenda-task-detail {
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+    margin-bottom: 4px;
+    padding-left: 6px;
+    border-left: 1px solid rgba(0, 240, 255, 0.1);
+}
+
+.agenda-task-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.55rem;
+}
+
+.agenda-task-due {
+    color: var(--neon-cyan);
+}
+
+/* Dense agenda layout — more cards per row */
+.agenda-task-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 6px;
+}
 
 /* ===== NEURAL LINK / CRON HEALTH ===== */
 .cron-summary {
@@ -604,8 +848,11 @@ body {
     .countdown-display { font-size: 2.2rem; }
     .filter-bar { padding: 8px 10px; gap: 4px; }
     .filter-btn { padding: 4px 8px; font-size: 0.6rem; }
+    .view-toggle { padding: 8px 10px; }
+    .toggle-btn { padding: 6px 16px; font-size: 0.65rem; min-width: 110px; }
     .finance-top-row { grid-template-columns: repeat(2, 1fr); }
     .task-grid { grid-template-columns: 1fr; }
+    .agenda-task-grid { grid-template-columns: 1fr; }
     .cron-grid { grid-template-columns: 1fr; }
 }
 

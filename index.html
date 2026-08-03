@@ -32,7 +32,7 @@
     <header class="cyber-header">
         <div class="header-left">
             <div class="logo glitch" data-text="CYBERWOLF">CYBERWOLF</div>
-            <span class="version-tag">LIVE // V3.0</span>
+            <span class="version-tag">LIVE // V3.1</span>
         </div>
         <div class="header-right">
             <div class="system-status">
@@ -45,113 +45,180 @@
         </div>
     </header>
 
-    <!-- VECTOR FILTER BAR -->
-    <nav class="filter-bar" id="filter-bar">
-        <button class="filter-btn active" data-vector="all">ALL <span class="filter-count" id="count-all">0</span></button>
-        <button class="filter-btn" data-vector="schedule">📅 SCHEDULE <span class="filter-count" id="count-schedule">0</span></button>
-        <button class="filter-btn" data-vector="finance">💰 FINANCE <span class="filter-count" id="count-finance">0</span></button>
-        <button class="filter-btn" data-vector="health">❤️ HEALTH <span class="filter-count" id="count-health">0</span></button>
-        <button class="filter-btn" data-vector="tech">🔧 TECH <span class="filter-count" id="count-tech">0</span></button>
-        <button class="filter-btn" data-vector="revenue">📈 REVENUE <span class="filter-count" id="count-revenue">0</span></button>
-        <button class="filter-btn" data-vector="wellness">🧠 WELLNESS <span class="filter-count" id="count-wellness">0</span></button>
-        <button class="filter-btn" data-vector="system">⚙ SYSTEM <span class="filter-count" id="count-system">0</span></button>
+    <!-- VIEW TOGGLE NAVIGATION -->
+    <nav class="view-toggle">
+        <button class="toggle-btn active" onclick="switchView('today')" id="btn-today">◈ TODAY</button>
+        <button class="toggle-btn" onclick="switchView('agenda')" id="btn-agenda">◈ AGENDA</button>
     </nav>
 
     <!-- MAIN DASHBOARD GRID -->
     <main class="dashboard-grid">
 
-        <!-- CLOCK + COUNTDOWN ROW -->
-        <section class="widget clock-widget">
-            <h3 class="widget-title">◉ SYSTEM TIME</h3>
-            <div id="clock-time" class="neon-text-clock">00:00:00</div>
-            <div id="clock-date" class="date-display">LOADING...</div>
-            <div id="clock-ms" class="ms-display">--</div>
-        </section>
+        <!-- ========== VIEW 1: TODAY ========== -->
+        <div class="view-panel active" id="panel-today">
 
-        <section class="widget countdown-widget">
-            <h3 class="widget-title">◉ RECOVERY DAY COUNTDOWN</h3>
-            <div id="countdown-value" class="countdown-display">---</div>
-            <div id="countdown-label" class="countdown-label">DAYS UNTIL AUG 4</div>
-            <div id="countdown-sublabel" class="countdown-sublabel">MANDATORY SACRED SILENCE</div>
-        </section>
+            <!-- CLOCK + COUNTDOWN ROW -->
+            <section class="widget clock-widget">
+                <h3 class="widget-title">◉ SYSTEM TIME</h3>
+                <div id="clock-time" class="neon-text-clock">00:00:00</div>
+                <div id="clock-date" class="date-display">LOADING...</div>
+                <div id="clock-ms" class="ms-display">--</div>
+            </section>
 
-        <!-- DAILY TASK PANELS -->
-        <section class="widget tasks-widget full-width" id="tasks-section">
-            <h3 class="widget-title">◉ MISSION OBJECTIVES</h3>
-            <div class="priority-summary" id="priority-summary"></div>
-            <div class="task-priority-group" id="group-p0">
-                <h4 class="priority-group-title p0-title">P0 — CRITICAL</h4>
-                <div class="task-grid" id="grid-p0"></div>
-            </div>
-            <div class="task-priority-group" id="group-p1">
-                <h4 class="priority-group-title p1-title">P1 — HIGH</h4>
-                <div class="task-grid" id="grid-p1"></div>
-            </div>
-            <div class="task-priority-group" id="group-p2">
-                <h4 class="priority-group-title p2-title">P2 — MEDIUM</h4>
-                <div class="task-grid" id="grid-p2"></div>
-            </div>
-            <div class="task-priority-group" id="group-p3">
-                <h4 class="priority-group-title p3-title">P3 — LOW</h4>
-                <div class="task-grid" id="grid-p3"></div>
-            </div>
-            <div id="no-tasks-msg" class="no-tasks hidden">No tasks match current filter.</div>
-        </section>
+            <section class="widget countdown-widget">
+                <h3 class="widget-title">◉ RECOVERY DAY COUNTDOWN</h3>
+                <div id="countdown-value" class="countdown-display">---</div>
+                <div id="countdown-label" class="countdown-label">DAYS UNTIL AUG 4</div>
+                <div id="countdown-sublabel" class="countdown-sublabel">MANDATORY SACRED SILENCE</div>
+            </section>
 
-        <!-- FINANCE TELEMETRY PANEL -->
-        <section class="widget finance-widget full-width" id="finance-section">
-            <h3 class="widget-title">◉ FINANCE TELEMETRY</h3>
-            <div class="finance-top-row">
-                <div class="balance-card">
-                    <div class="balance-label">LIQUID CASH</div>
-                    <div class="balance-value neon-cyan" id="fin-balance">$285</div>
-                    <div class="balance-sub">est. available funds</div>
+            <!-- DAILY TASK PANEL -->
+            <section class="widget tasks-widget full-width" id="tasks-section">
+                <h3 class="widget-title">◉ MISSION OBJECTIVES — TODAY</h3>
+                <div class="priority-summary" id="priority-summary"></div>
+                <div class="task-priority-group" id="group-p0">
+                    <h4 class="priority-group-title p0-title">P0 — CRITICAL</h4>
+                    <div class="task-grid" id="grid-p0-today"></div>
                 </div>
-                <div class="balance-card">
-                    <div class="balance-label">MONTHLY OBLIGATIONS</div>
-                    <div class="balance-value neon-red" id="fin-obligations">$2,863</div>
-                    <div class="balance-sub">total monthly expenses</div>
+                <div class="task-priority-group" id="group-p1">
+                    <h4 class="priority-group-title p1-title">P1 — HIGH</h4>
+                    <div class="task-grid" id="grid-p1-today"></div>
                 </div>
-                <div class="balance-card">
-                    <div class="balance-label">COVERAGE RATIO</div>
-                    <div class="balance-value neon-orange" id="fin-coverage">10%</div>
-                    <div class="balance-sub">liquidity to obligations</div>
+                <div class="task-priority-group" id="group-p2">
+                    <h4 class="priority-group-title p2-title">P2 — MEDIUM</h4>
+                    <div class="task-grid" id="grid-p2-today"></div>
                 </div>
-                <div class="balance-card">
-                    <div class="balance-label">FOUNDATION SCORE</div>
-                    <div class="balance-value neon-purple" id="fin-score">2.75/10</div>
-                    <div class="balance-sub">financial health index</div>
+                <div class="task-priority-group" id="group-p3">
+                    <h4 class="priority-group-title p3-title">P3 — LOW</h4>
+                    <div class="task-grid" id="grid-p3-today"></div>
                 </div>
-            </div>
-            <div class="finance-mid-row">
-                <div class="sub-card">
-                    <h4 class="sub-card-title">SHIELD RATINGS</h4>
-                    <div class="shield-bars">
-                        <div class="shield-row"><span>Shelter</span><div class="progress-track"><div class="progress-fill progress-low" id="shelter-bar"></div></div><span class="progress-val" id="shelter-val">4/10</span></div>
-                        <div class="shield-row"><span>Food</span><div class="progress-track"><div class="progress-fill progress-critical" id="food-bar"></div></div><span class="progress-val" id="food-val">2/10</span></div>
-                        <div class="shield-row"><span>Income</span><div class="progress-track"><div class="progress-fill progress-low" id="income-bar"></div></div><span class="progress-val" id="income-val">2/10</span></div>
-                        <div class="shield-row"><span>Mobility</span><div class="progress-track"><div class="progress-fill progress-med" id="mobility-bar"></div></div><span class="progress-val" id="mobility-val">3/10</span></div>
+                <div id="no-tasks-msg" class="no-tasks hidden">No tasks scheduled for today.</div>
+            </section>
+
+            <!-- UNFINISHED BACKLOG (Collapsible) -->
+            <section class="widget backlog-widget full-width" id="backlog-section">
+                <h3 class="widget-title backlog-toggle" onclick="toggleBacklog()" id="backlog-heading">
+                    ◉ UNFINISHED FROM PREVIOUS DAYS <span class="backlag-arrow">▼</span>
+                </h3>
+                <div class="backlog-content hidden" id="backlog-content">
+                    <div class="task-priority-group" id="group-p0-backlog">
+                        <h4 class="priority-group-title p0-title">P0 — CRITICAL</h4>
+                        <div class="task-grid" id="grid-p0-backlog"></div>
+                    </div>
+                    <div class="task-priority-group" id="group-p1-backlog">
+                        <h4 class="priority-group-title p1-title">P1 — HIGH</h4>
+                        <div class="task-grid" id="grid-p1-backlog"></div>
+                    </div>
+                    <div class="task-priority-group" id="group-p2-backlog">
+                        <h4 class="priority-group-title p2-title">P2 — MEDIUM</h4>
+                        <div class="task-grid" id="grid-p2-backlog"></div>
+                    </div>
+                    <div class="task-priority-group" id="group-p3-backlog">
+                        <h4 class="priority-group-title p3-title">P3 — LOW</h4>
+                        <div class="task-grid" id="grid-p3-backlog"></div>
                     </div>
                 </div>
-                <div class="sub-card">
-                    <h4 class="sub-card-title">WEEKLY BILLS PIPELINE</h4>
-                    <div class="bill-list" id="bill-list"></div>
-                </div>
-            </div>
-            <div class="finance-bottom-row">
-                <div class="watch-alerts" id="watch-alerts"></div>
-            </div>
-        </section>
+            </section>
 
-        <!-- NEURAL LINK MONITOR (Cron Health) -->
-        <section class="widget cron-widget full-width" id="cron-section">
+            <!-- MINI FINANCE TELEMETRY -->
+            <section class="widget finance-widget full-width" id="finance-mini">
+                <h3 class="widget-title">◉ FINANCE TELEMETRY</h3>
+                <div class="finance-top-row">
+                    <div class="balance-card">
+                        <div class="balance-label">LIQUID CASH</div>
+                        <div class="balance-value neon-cyan" id="fin-balance">--</div>
+                        <div class="balance-sub">est. available funds</div>
+                    </div>
+                    <div class="balance-card">
+                        <div class="balance-label">MONTHLY OBLIGATIONS</div>
+                        <div class="balance-value neon-red" id="fin-obligations">--</div>
+                        <div class="balance-sub">total monthly expenses</div>
+                    </div>
+                    <div class="balance-card">
+                        <div class="balance-label">COVERAGE RATIO</div>
+                        <div class="balance-value neon-orange" id="fin-coverage">--</div>
+                        <div class="balance-sub">liquidity to obligations</div>
+                    </div>
+                    <div class="balance-card">
+                        <div class="balance-label">FOUNDATION SCORE</div>
+                        <div class="balance-value neon-purple" id="fin-score">--/10</div>
+                        <div class="balance-sub">financial health index</div>
+                    </div>
+                </div>
+            </section>
+
+        </div><!-- END panel-today -->
+
+        <!-- ========== VIEW 2: AGENDA ========== -->
+        <div class="view-panel" id="panel-agenda">
+
+            <!-- AGENDA HEADER WITH FILTER INFO -->
+            <section class="widget agenda-header-widget full-width">
+                <h3 class="widget-title">◉ HIGH PRIORITY TRIAGE — P0 &amp; P1 ACROSS ALL VECTORS</h3>
+                <div class="priority-summary" id="agenda-priority-summary"></div>
+            </section>
+
+            <!-- VECTOR-GROUPED P0/P1 TASKS -->
+            <section class="widget agenda-tasks-widget full-width" id="agenda-tasks">
+                <!-- Dynamically populated by renderAgenda() -->
+            </section>
+
+            <!-- FULL FINANCE TELEMETRY PANEL -->
+            <section class="widget finance-widget full-width" id="finance-full">
+                <h3 class="widget-title">◉ FINANCE TELEMETRY — FULL DETAIL</h3>
+                <div class="finance-top-row">
+                    <div class="balance-card">
+                        <div class="balance-label">LIQUID CASH</div>
+                        <div class="balance-value neon-cyan" id="fin-balance-full">--</div>
+                        <div class="balance-sub">est. available funds</div>
+                    </div>
+                    <div class="balance-card">
+                        <div class="balance-label">MONTHLY OBLIGATIONS</div>
+                        <div class="balance-value neon-red" id="fin-obligations-full">--</div>
+                        <div class="balance-sub">total monthly expenses</div>
+                    </div>
+                    <div class="balance-card">
+                        <div class="balance-label">COVERAGE RATIO</div>
+                        <div class="balance-value neon-orange" id="fin-coverage-full">--</div>
+                        <div class="balance-sub">liquidity to obligations</div>
+                    </div>
+                    <div class="balance-card">
+                        <div class="balance-label">FOUNDATION SCORE</div>
+                        <div class="balance-value neon-purple" id="fin-score-full">--/10</div>
+                        <div class="balance-sub">financial health index</div>
+                    </div>
+                </div>
+                <div class="finance-mid-row">
+                    <div class="sub-card">
+                        <h4 class="sub-card-title">SHIELD RATINGS</h4>
+                        <div class="shield-bars">
+                            <div class="shield-row"><span>Shelter</span><div class="progress-track"><div class="progress-fill progress-low" id="shelter-bar"></div></div><span class="progress-val" id="shelter-val">4/10</span></div>
+                            <div class="shield-row"><span>Food</span><div class="progress-track"><div class="progress-fill progress-critical" id="food-bar"></div></div><span class="progress-val" id="food-val">2/10</span></div>
+                            <div class="shield-row"><span>Income</span><div class="progress-track"><div class="progress-fill progress-low" id="income-bar"></div></div><span class="progress-val" id="income-val">2/10</span></div>
+                            <div class="shield-row"><span>Mobility</span><div class="progress-track"><div class="progress-fill progress-med" id="mobility-bar"></div></div><span class="progress-val" id="mobility-val">3/10</span></div>
+                        </div>
+                    </div>
+                    <div class="sub-card">
+                        <h4 class="sub-card-title">WEEKLY BILLS PIPELINE</h4>
+                        <div class="bill-list" id="bill-list-full"></div>
+                    </div>
+                </div>
+                <div class="finance-bottom-row">
+                    <div class="watch-alerts" id="watch-alerts-full"></div>
+                </div>
+            </section>
+
+        </div><!-- END panel-agenda -->
+
+        <!-- SHARED: NEURAL LINK MONITOR (Cron Health) — visible in both views -->
+        <section class="widget cron-widget full-width shared-widget" id="cron-section">
             <h3 class="widget-title">◉ NEURAL LINK — CRON HEALTH MONITOR</h3>
             <div class="cron-summary" id="cron-summary"></div>
             <div class="cron-grid" id="cron-grid"></div>
         </section>
 
-        <!-- CORE DIRECTIVES -->
-        <section class="widget directives-widget">
+        <!-- SHARED: CORE DIRECTIVES -->
+        <section class="widget directives-widget shared-widget">
             <h3 class="widget-title">◉ CORE DIRECTIVES</h3>
             <p id="directive-text" class="directives-text">"LOVE UNDER WILL."</p>
             <div class="directives-nav">
@@ -160,8 +227,8 @@
             </div>
         </section>
 
-        <!-- SETTINGS -->
-        <section class="widget settings-widget">
+        <!-- SHARED: SETTINGS -->
+        <section class="widget settings-widget shared-widget">
             <h3 class="widget-title">◉ CONFIG</h3>
             <div class="setting-item">
                 <label>ACCENT COLOR</label>
@@ -180,6 +247,7 @@
                 <button class="btn-secondary" id="export-data">EXPORT LS</button>
             </div>
         </section>
+
     </main>
 
     <footer class="cyber-footer">

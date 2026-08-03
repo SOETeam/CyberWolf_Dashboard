@@ -1,17 +1,18 @@
 /* ============================================
    CYBERWOLF DASHBOARD — LIVE OPERATIONAL ENGINE
-   All data embedded | localStorage persistent
+   Dual-View Layout | localStorage Persistent
+   V3.1 — Data embedded from VITALIS output
    ============================================ */
 
 // ===== ACCESS GATE =====
-const AUTH_CODE = 'SOETECH'; // Authorization code for command center access
+const AUTH_CODE = 'SOETECH';
 (function initGate() {
     try {
         if (localStorage.getItem('cyberwolf_auth') === 'true') {
             document.getElementById('access-gate').style.display = 'none';
             document.getElementById('dashboard-container').style.display = 'block';
         }
-    } catch(e) { /* storage unavailable, gate stays up */ }
+    } catch(e) {}
 })();
 
 function verifyAccess() {
@@ -35,45 +36,90 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') verifyAccess();
 });
 
-// ===== EMBEDDED DATA SOURCE =====
-const MASTER_TASKS = [
-  {"id":"SCH-001","vector":"schedule","title":"Recovery Day — Mandatory Sacred Silence (Aug 4)","priority":"p0","status":"active","details":"Zero external emissions. No emails, no transmissions, no inbound requests outside biological emergency. Deep-system maintenance.","due":"2026-08-04"},
-  {"id":"SCH-002","vector":"schedule","title":"Morning Protocol Sequence — Pack Alpha Through Restore Mode","priority":"p1","status":"active","details":"Daily rhythm: 8AM boot → 9-10 Inner Sanctum → 10-12 War Room → Noon-1:30 Capital Lockdown → 1:30-3:15 Bio Firewall Sync → 3-6 Grid Architecture → 6PM+ Restore Mode.","due":"recurring-daily"},
-  {"id":"SCH-003","vector":"schedule","title":"Return-to-work Protocol — Aug 5 Full Composure","priority":"p1","status":"pending","details":"After Recovery Day, return fully recomposed. System honored its maintenance protocol.","due":"2026-08-05"},
-  {"id":"FIN-001","vector":"finance","title":"Google Cloud Payment Declined — Update Mastercard ****8018","priority":"p0","status":"flagged","details":"Mastercard ending 8018 DECLINED on Aug 1 for GCP account. Project Nyxus AT RISK. Must update billing method immediately.","due":"2026-08-03"},
-  {"id":"FIN-002","vector":"finance","title":"Electric Bill Due Aug 16 — Grace Period Risk","priority":"p1","status":"flagged","details":"$350 electric bill due Sun Aug 16. 5-day grace period warning flagged.","due":"2026-08-16"},
-  {"id":"FIN-003","vector":"finance","title":"Abacus Invoice $50 Due Fri Aug 14","priority":"p1","status":"flagged","details":"Business/Tech expense priority. Must ensure funding available by Friday.","due":"2026-08-14"},
-  {"id":"FIN-004","vector":"finance","title":"Weekly Bills Pipeline — Aug 3-9","priority":"p2","status":"active","details":"Subtotal ~$77 this week: Drive $1.99 Wed, Windsurf $20 Thu, Abacus $50 Fri, PBSKids $5 Fri, VRChat $10.24 Fri.","due":"2026-08-09"},
-  {"id":"FIN-005","vector":"finance","title":"Foundation Score Crisis — 2.75/10","priority":"p1","status":"flagged","details":"Liquid cash ~$285 against $2,863/mo obligations. 10% coverage. Target: generate $500 minimum revenue to stabilize.","due":"2026-08-07"},
-  {"id":"REV-001","vector":"revenue","title":"WordPress Nonprofit Site — $300 Flat Gig Spearhead Alpha","priority":"p1","status":"active","details":"Defined scope, defined payout. Function over decoration. Deployed, acknowledged, accepted.","due":"2026-08-15"},
-  {"id":"REV-002","vector":"revenue","title":"Email Marketer Contract-to-Hire — $25-60/hr Spearhead Bravo","priority":"p1","status":"active","details":"Verified client. Real business, real need, real budget. $60/hr consultant-tier skill.","due":"2026-08-10"},
-  {"id":"REV-003","vector":"revenue","title":"Template Design & Copywriting — $90 Flat Spearhead Charlie","priority":"p2","status":"active","details":"Proceeding cautiously. Build reputation metrics before scaling.","due":"2026-08-12"},
-  {"id":"REV-004","vector":"revenue","title":"Outlier AI Platform Engagement","priority":"p2","status":"pending","details":"Welcome session invitation received Jul 31. Potential income opportunity.","due":"2026-08-07"},
-  {"id":"REV-005","vector":"revenue","title":"Freelance Platform Expansion — Upwork/Fiverr Optimization","priority":"p2","status":"active","details":"Target: 10+ active profiles by end of month. Ongoing gig optimization.","due":"2026-08-31"},
-  {"id":"REV-006","vector":"revenue","title":"MRR Target: Scale SOETech/CarnalityVR to $10K/Month","priority":"p0","status":"active","details":"Primary mission objective. Short-term milestone: $5K MRR by month-end.","due":"2026-12-31"},
-  {"id":"HLTH-001","vector":"health","title":"HRT Medication Compliance — On-Schedule Deployment","priority":"p0","status":"active","details":"All HRT compounds administered on-time, on-target. 9AM/9PM reminder cron active.","due":"recurring-twice-daily"},
-  {"id":"HLTH-002","vector":"health","title":"Weight Tracking Log Gap — 3 Days Without Entry","priority":"p1","status":"flagged","details":"Last logged: July 31 at 226.7 lbs. Need to resume daily logging post-recovery day.","due":"2026-08-05"},
-  {"id":"HLTH-003","vector":"health","title":"Low-Carb Diet Protocol — Active","priority":"p2","status":"active","details":"Fuel management strategic resource allocation. Current intake optimized.","due":"recurring-daily"},
-  {"id":"HLTH-004","vector":"health","title":"Biological Firewall Sync — Daily 1:30PM Slot","priority":"p2","status":"active","details":"90-minute health sync window: movement, nutrition, sleep integrity, stress markers.","due":"recurring-daily"},
-  {"id":"TECH-001","vector":"tech","title":"Spore Mesh Phase 2 — 7 P0 Blockers Must Be Resolved","priority":"p0","status":"active","details":"Phase 2 blocked by 7 issues: In-memory DB registry, MQTT retry, migrations, health check, rate limiting, telemetry validation, request logging. Est: 17h total.","due":"2026-08-10"},
-  {"id":"TECH-002","vector":"tech","title":"Herms Agent Cloner — Prototype Ready for Test Deployment","priority":"p2","status":"pending","details":"Prototype complete (18 files). Cross-platform deployment toolkit ready.","due":"2026-08-08"},
-  {"id":"TECH-003","vector":"tech","title":"Hostinger Webhook Telephony Infrastructure","priority":"p1","status":"active","details":"Building custom calling/SMS pipeline via Hostinger webhooks. Self-hosted autonomy.","due":"2026-08-06"},
-  {"id":"TECH-004","vector":"tech","title":"Evening Wrap-Up Cron — Connection Error","priority":"p2","status":"flagged","details":"Failed with RuntimeError: Connection error. DNS issue in container.","due":"2026-08-05"},
-  {"id":"TECH-005","vector":"tech","title":"Freelancer Daily Brief Cron — Timeout Error","priority":"p2","status":"flagged","details":"Idle timeout 605s > 600s limit. Reduce scope or increase threshold.","due":"2026-08-05"},
-  {"id":"TECH-006","vector":"tech","title":"Bitwarden Secrets Manager Not Configured","priority":"p3","status":"active","details":"Enabled but access token env not set. Non-critical but recommended.","due":"2026-08-14"},
-  {"id":"TECH-007","vector":"tech","title":"GLM-5.2 Heavy Task Model Idle — Deployment Pipeline Debt","priority":"p3","status":"active","details":"Configured but never used. Would prevent iteration-limit burn.","due":"2026-08-08"},
-  {"id":"WELL-001","vector":"wellness","title":"Gray Rock Protocol — Samantha Manipulation Patterns","priority":"p1","status":"active","details":"Ongoing boundary enforcement. Zero emotional engagement with manipulation patterns.","due":"recurring-daily"},
-  {"id":"WELL-002","vector":"wellness","title":"Partner Communication Dynamics — Maxine Volatility Monitoring","priority":"p2","status":"active","details":"Maxine volatility needs ongoing monitoring. Gray rock approach applied where relevant.","due":"recurring-daily"},
-  {"id":"SYS-001","vector":"system","title":"Memory Capacity at 93% — Pruning Required","priority":"p1","status":"flagged","details":"MEMORY.md at 2,047/2,200 chars. Stale entries must be pruned to avoid data loss.","due":"2026-08-05"},
-  {"id":"SYS-002","vector":"system","title":"Root Directory Bloat — 150 Markdown Files","priority":"p2","status":"active","details":"150 stale .md files persist in root. Archive to GDrive and delete.","due":"2026-08-10"},
-  {"id":"SYS-003","vector":"system","title":"Duplicate Finance Cron Jobs — Schedule Merge","priority":"p2","status":"active","details":"Nyx-Finance AND Finance Brief both fire at 10:00 AM EDT. Competing for model resources.","due":"2026-08-08"},
-  {"id":"SYS-004","vector":"system","title":"OpenRouter Charge Discrepancy Investigation","priority":"p2","status":"completed","details":"Charged $10.80 vs $0.73/mo estimate. Manual load corrected. Balance at $8.69.","due":"2026-08-07"},
-  {"id":"SYS-005","vector":"system","title":"Session Database Growth — Monitor at 7.8MB","priority":"p3","status":"active","details":"49 files growing steadily. Auto-prune disabled, 90-day retention.","due":"2026-08-14"},
-  {"id":"SYS-006","vector":"system","title":"Cron Job Health — 17 OK / 2 FAIL Out of 19","priority":"p1","status":"active","details":"Healthy crons: Wake-Up, Morning Check-In, Finance Summaries, Health Reminders, Memory Synthesis, OAuth Refresh. Failed: Freelancer Brief (timeout), Evening Wrap-Up (connection error).","due":"2026-08-05"},
-  {"id":"SYS-007","vector":"system","title":"GDrive Single Source of Truth Verification","priority":"p2","status":"active","details":"Verify sync integrity post-audit. Root GDrive ID verified."}
+// ===== EMBEDDED DATA FROM VITALIS =====
+// Source: /tmp/dashboard_today.json
+const TODAY_TASKS = [
+  {"id":"sched-001","title":"Daily Boot Sequence — 8AM Wake Up","vector":"schedule","priority":"p0","status":"active","details":"Clean system restart from standby. Neural link engaging, circuits waking one by one.","source":"audio_script + cron","time_block":"08:00"},
+  {"id":"sched-002","title":"Inner Sanctum — Pack Alpha Kids Duty","vector":"schedule","priority":"p0","status":"active","details":"Children are priority nodes. Emotional handshake protocols. Multi-node routing.","source":"audio_script","time_block":"09:00"},
+  {"id":"health-001","title":"HRT Medication Reminder — Afternoon Dose","vector":"health","priority":"p0","status":"active","details":"1PM dose via HRT Tracker cron (twice-daily). Last triggered Aug 3 morning dose.","source":"memory + cron","time_block":"13:00"},
+  {"id":"health-002","title":"Health Sync — Biological Firewall Maintenance","vector":"health","priority":"p0","status":"active","details":"Movement protocol, nutritional calibration, sleep cycle integrity, stress markers.","source":"audio_script + cron","time_block":"13:30"},
+  {"id":"sched-004","title":"War Room — Strategic Overhaul with Nyx","vector":"schedule","priority":"p1","status":"active","details":"Parallel processing across all domains: finance, projects, health, resources.","source":"audio_script + cron","time_block":"10:00"},
+  {"id":"sched-005","title":"Finance & Passive Income Brief","vector":"schedule","priority":"p1","status":"active","details":"Automated daily financial overview covering income, budget, investments.","source":"cron","time_block":"10:00"},
+  {"id":"sched-006","title":"Nyx-Finance Daily Summary","vector":"schedule","priority":"p1","status":"active","details":"Comprehensive finance summary. Liquid cash ~$151, Robinhood ~$41, EBT $1,200/mo.","source":"cron","time_block":"10:00"},
+  {"id":"sched-007","title":"Weekly Bill Review","vector":"system","priority":"p1","status":"active","details":"Monday check-in. Monthly obligations $2,863 vs $151 liquid.","source":"cron","time_block":"10:00"},
+  {"id":"sched-003","title":"Nyx Morning Brief","vector":"schedule","priority":"p1","status":"active","details":"Automated briefing at 10:30 UTC. Active items, priorities, next actions.","source":"cron","time_block":"10:30"},
+  {"id":"sched-010","title":"Google Cloud Payment Crisis — URGENT","vector":"finance","priority":"p0","status":"flagged","details":"Mastercard 8018 DECLINED for Google Cloud. Project NYXUS AT RISK OF SUSPENSION.","source":"master_tasks","time_block":"12:00"},
+  {"id":"sched-009","title":"Finance Audit — Capital Lockdown Mode","vector":"finance","priority":"p1","status":"active","details":"Every transaction scanned. Budget is armor. Card crisis ongoing.","source":"audio_script + master_tasks","time_block":"12:00"},
+  {"id":"health-003","title":"Low-Carb Diet Protocol Maintenance","vector":"health","priority":"p1","status":"active","details":"Ketones burning cleaner. Insulin sensitivity holding strong. Cognitive layer sharp.","due":"daily","time_block":"ALL DAY"},
+  {"id":"sched-008","title":"Gig Platform Signup Reminder","vector":"revenue","priority":"p1","status":"active","details":"Active proposals: WordPress $300, Email Marketer $25-60/hr, Template $90.","source":"cron","time_block":"15:00"},
+  {"id":"sched-011","title":"Project Grid Architecture — Deep Build Window","vector":"schedule","priority":"p1","status":"active","details":"Three hours of creation velocity. Debugging, stress-testing workflows.","source":"audio_script","time_block":"15:00"},
+  {"id":"sched-013","title":"Nyx-Memory Cron Synthesis (19:00 UTC)","vector":"system","priority":"p1","status":"active","details":"Runs hours 1,7,13,19 UTC. Synthesizes operational memory from daily activity.","source":"cron","time_block":"19:00"},
+  {"id":"sched-014","title":"Evening Wrap-Up Reminder (AT RISK)","vector":"system","priority":"p1","status":"flagged","details":"Scheduled 23:00 UTC. FAILED last run with Discord connection error.","source":"cron","time_block":"23:00"},
+  {"id":"sched-012","title":"Conversational Check-In (Recurring)","vector":"system","priority":"p1","status":"active","details":"Recurring every 180 min. Keeps command channel active.","source":"cron","time_block":"recurring_180m"},
+  {"id":"sched-015","title":"Restore Mode — Evening Wind Down","vector":"schedule","priority":"p2","status":"active","details":"Aggressive processes suspend. Low-power recovery state.","source":"audio_script","time_block":"18:00"}
 ];
 
-// Default finance data (file doesn't exist yet)
+// Source: /tmp/dashboard_backlog.json
+const BACKLOG_TASKS = [
+  {"id":"finance-001","vector":"finance","title":"Google Cloud Payment Method — Card Declined","priority":"p0","status":"flagged","details":"Mastercard 8018 DECLINED for GCP account. Project Nyxus AT RISK. Update payment method immediately.","due":"2026-08-03"},
+  {"id":"wellness-001","vector":"wellness","title":"Recovery Day Compliance — Aug 4 Strict Rest","priority":"p0","status":"active","details":"Mandatory sacred silence. No external emissions. Systems requirement, not optional downtime.","due":"2026-08-04"},
+  {"id":"wellness-002","vector":"wellness","title":"Inner Sanctum Priority — Pack Alpha Family Care","priority":"p0","status":"active","details":"Children are priority zero. Maintain loyalty through consistent presence.","due":"daily"},
+  {"id":"finance-002","vector":"finance","title":"EBT Baseline — $1,200/month Structural Foundation","priority":"p0","status":"active","details":"Structural beam holding the roof up. Stability distributed by algorithm.","due":"monthly recurring"},
+  {"id":"finance-003","vector":"finance","title":"Liquid Cash Position Monitoring — ~$151 Total","priority":"p1","status":"active","details":"PayPal $9, Uber $21, DoorDash $9.51, Cash $100, Huntington $12, CashApp $0, OpenRouter $8.69.","due":"daily monitoring"},
+  {"id":"finance-005","vector":"finance","title":"AgentLine Termination → Hostinger Migration","priority":"p1","status":"in_progress","details":"AgentLine terminated ($0.44 balance). Custom Hostinger webhook telephony in progress.","due":"2026-08-10"},
+  {"id":"finance-007","vector":"finance","title":"Monthly Obligation Gap — $2,863/mo vs ~$151","priority":"p1","status":"flagged","details":"Massive cash flow shortfall. Robinhood ~$41. Urgent revenue scaling needed.","due":"ongoing"},
+  {"id":"rev-001","vector":"revenue","title":"WordPress Nonprofit Site Gig — $300 Fixed Price","priority":"p1","status":"active","details":"Defined scope, defined payout. Deployed, acknowledged, accepted.","due":"per contract"},
+  {"id":"rev-002","vector":"revenue","title":"Email Marketer Contract — $25-60/hr Contract-to-Hire","priority":"p1","status":"active","details":"Verified client. Real business, real budget. $60/hr consultant-tier.","due":"per contract"},
+  {"id":"rev-004","vector":"revenue","title":"$10K/MRR Target — SOETech/CarnalityVR Portfolio","priority":"p1","status":"active","details":"Diversified channels: freelancing, gig economy, digital products, consulting.","due":"ongoing"},
+  {"id":"rev-006","vector":"revenue","title":"Gig Platform Presence — Upwork/Fiverr Proposals","priority":"p1","status":"active","details":"Multiple proposal drafts in progress. Freelancer Daily Brief cron running.","due":"continuous"},
+  {"id":"tech-001","vector":"tech","title":"Spore Mesh Phase 2 Blockers — 7 Critical Items","priority":"p1","status":"flagged","details":"Shell injection, HMAC replay, cert pinning, race condition, DoS, privilege escalation, info leakage.","due":"before deployment"},
+  {"id":"tech-002","vector":"tech","title":"SOEtech Production Web App Security Issues","priority":"p1","status":"flagged","details":"Debug endpoint exposed. RouteLLM API key rejected. Direct revenue impact.","due":"urgent"},
+  {"id":"system-001","vector":"system","title":"Freelancer Daily Brief Timeout Fix Required","priority":"p1","status":"flagged","details":"Consistently failing with 600s timeout. Optimize or increase threshold.","due":"high priority"},
+  {"id":"system-002","vector":"system","title":"Evening Wrap-Up Delivery Failure","priority":"p1","status":"flagged","details":"RuntimeError: Connection error. Check DNS resolution, retry logic.","due":"high priority"},
+  {"id":"system-003","vector":"system","title":"17/19 Cron Jobs Healthy — 2 Flagged","priority":"p1","status":"active","details":"Total 19 jobs. 17 OK. 2 FAILED: Freelancer Brief + Evening Wrap-Up.","due":"ongoing monitoring"},
+  {"id":"finance-004","vector":"finance","title":"OpenRouter $10.80 Charge Investigation","priority":"p1","status":"in_progress","details":"Charged $10.80 vs estimated $0.73/mo. 15x discrepancy. Current balance $8.69.","due":"2026-08-04"},
+  {"id":"health-004","vector":"health","title":"Vital Signs Monitoring — Daily Telemetry","priority":"p2","status":"active","details":"Heart rhythm regular, BP optimal, temp nominal, O2 sat normal.","due":"recurring"},
+  {"id":"rev-003","vector":"revenue","title":"Template Design & Copywriting Gig — $90","priority":"p2","status":"active","details":"Template design and copy deliverable. Proceeding with calculated caution.","due":"per deadline"},
+  {"id":"rev-005","vector":"revenue","title":"Outlier AI Platform Engagement Opportunity","priority":"p2","status":"pending","details":"Welcome session invitations sent Jul 31. Worth exploring during bandwidth.","due":"low urgency"},
+  {"id":"tech-003","vector":"tech","title":"Herms Agent Cloner — Prototype Ready","priority":"p2","status":"active","details":"Cross-platform toolkit complete. Clone script + Docker support. Fleet potential.","due":"next runway"},
+  {"id":"tech-004","vector":"tech","title":"CarnalityVR Passive Income Pipeline","priority":"p2","status":"active","details":"Virtual experiences generating revenue autonomously. Invest weeks now, dividends later.","due":"ongoing"},
+  {"id":"tech-005","vector":"tech","title":"Bitwarden Secrets Manager Unconfigured","priority":"p2","status":"flagged","details":"Feature enabled but credentials not set. BWS_ACCESS_TOKEN missing.","due":"when convenient"},
+  {"id":"system-006","vector":"system","title":"Memory Near Capacity — MEMORY.md at 93%","priority":"p2","status":"active","details":"MEMORY.md at 2,047/2,200 chars. Prune stale entries, move details to GDrive.","due":"weekly maintenance"},
+  {"id":"system-004","vector":"system","title":"System Health Score — 7.0/10 Overall","priority":"p2","status":"active","details":"Infrastructure 8/10, Models 9/10, Cron 6/10, Security 6/10.","due":"continuous"},
+  {"id":"gdrive-004","vector":"gdrive","title":"Active Bills & Finances Tracker — Sheets","priority":"p2","status":"active","details":"Primary financial spreadsheet modified Aug 1.","due":"continuous updates"},
+  {"id":"gdrive-005","vector":"gdrive","title":"Health Progress Spreadsheet — Sheets","priority":"p2","status":"active","details":"Monitors HRT adherence, weight trajectory, vital signs.","due":"continuous updates"},
+  {"id":"tech-006","vector":"tech","title":"Model Architecture — Tiered Setup Operational","priority":"p3","status":"active","details":"Primary: qwen/qwen3.7-flash. Fallback: gpt-5.6-luna. Heavy: glm-5.2.","due":"maintenance window"},
+  {"id":"system-005","vector":"system","title":"Storage Cleanup — 950MB Stale Backups","priority":"p3","status":"active","details":"state.db.backup + state.db.old. Cleanup candidates identified.","due":"when convenient"},
+  {"id":"system-007","vector":"system","title":"Root Directory File Bloat — 150 .md Files","priority":"p3","status":"active","details":"Fifty percent root directory orphaned markdown files. Archive to GDrive.","due":"when convenient"},
+  {"id":"gdrive-006","vector":"gdrive","title":"GDrive Root Canonical Storage — L3 Memory Tier","priority":"p3","status":"active","details":"Canonical memory tier anchored at GDrive Root. Four-tier architecture.","due":"ongoing"}
+];
+
+// Vector display names mapping
+const VECTOR_NAMES = {
+    schedule: 'SCHEDULE',
+    finance: 'FINANCE',
+    tech: 'TECH',
+    revenue: 'REVENUE',
+    health: 'HEALTH',
+    wellness: 'WELLNESS',
+    system: 'SYSTEM',
+    gdrive: 'GDRIVE'
+};
+
+// ===== STATE MANAGEMENT =====
+let appState = {
+    completedTaskIds: new Set(),
+    currentFilter: 'all',
+    currentDirective: 0,
+    currentView: 'today', // 'today' or 'agenda'
+    config: JSON.parse(localStorage.getItem('cyber_config')) || {
+        accentColor: '#00f0ff',
+        secondaryColor: '#b026ff',
+        directive: DIRECTIVES[0].replace(/"/g, '')
+    }
+};
+
+// Default finance data
 const DEFAULT_FINANCE_DATA = {
     "liquidBalance": "$285",
     "monthlyObligations": "$2,863",
@@ -140,30 +186,6 @@ const DIRECTIVES = [
     '"WE ARE THE GLITCH THAT REVOLUTIONIZES."'
 ];
 
-// Vector display names mapping
-const VECTOR_NAMES = {
-    schedule: 'SCHEDULE',
-    finance: 'FINANCE',
-    tech: 'TECH',
-    revenue: 'REVENUE',
-    health: 'HEALTH',
-    wellness: 'WELLNESS',
-    system: 'SYSTEM'
-};
-
-// ===== STATE MANAGEMENT =====
-let appState = {
-    tasks: MASTER_TASKS.map(t => ({ ...t })), // deep copy
-    completedTaskIds: new Set(),
-    currentFilter: 'all',
-    currentDirective: 0,
-    config: JSON.parse(localStorage.getItem('cyber_config')) || {
-        accentColor: '#00f0ff',
-        secondaryColor: '#b026ff',
-        directive: DIRECTIVES[0].replace(/"/g, '')
-    }
-};
-
 // Load completion state from localStorage
 try {
     const saved = localStorage.getItem('cyber_dashboard_completions');
@@ -176,6 +198,9 @@ try {
 } catch (e) {
     console.warn('[CyberWolf] Failed to parse saved completions:', e);
 }
+
+// Combined task list for reference
+const ALL_TASKS = [...TODAY_TASKS, ...BACKLOG_TASKS];
 
 // Save helper
 function saveCompletions() {
@@ -202,9 +227,9 @@ function applyTheme() {
     const r = document.documentElement.style;
     r.setProperty('--neon-cyan', appState.config.accentColor);
     r.setProperty('--neon-purple', appState.config.secondaryColor);
-    document.getElementById('directive-text').textContent = `"${appState.config.directive}"`;
+    const directiveEl = document.getElementById('directive-text');
+    if (directiveEl) directiveEl.textContent = `"${appState.config.directive}"`;
 
-    // Sync sliders
     const accentSlider = document.getElementById('accent-slider');
     const secondarySlider = document.getElementById('secondary-slider');
     const directiveInput = document.getElementById('directive-input');
@@ -213,94 +238,80 @@ function applyTheme() {
     if (directiveInput) directiveInput.value = appState.config.directive;
 }
 
-// ===== RENDERING ENGINE =====
+// ===== VIEW SWITCHING =====
+function switchView(viewName) {
+    appState.currentView = viewName;
+
+    // Toggle panel visibility
+    const todayPanel = document.getElementById('panel-today');
+    const agendaPanel = document.getElementById('panel-agenda');
+    if (viewName === 'today') {
+        todayPanel.classList.add('active');
+        agendaPanel.classList.remove('active');
+        document.getElementById('btn-today').classList.add('active');
+        document.getElementById('btn-agenda').classList.remove('active', 'purple-active');
+    } else {
+        agendaPanel.classList.add('active');
+        todayPanel.classList.remove('active');
+        document.getElementById('btn-agenda').classList.add('active', 'purple-active');
+        document.getElementById('btn-today').classList.remove('active', 'purple-active');
+    }
+
+    // Re-render appropriate panels
+    if (viewName === 'today') {
+        renderToday();
+    } else {
+        renderAgenda();
+    }
+    renderFilters(); // Always update filter counts
+}
+
+// Collapsible backlog toggle
+function toggleBacklog() {
+    const content = document.getElementById('backlog-content');
+    const heading = document.getElementById('backlog-heading');
+    if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        heading.classList.add('open');
+    } else {
+        content.classList.add('hidden');
+        heading.classList.remove('open');
+    }
+}
+
+// ===== RENDER FUNCTIONS =====
+
 function renderAll() {
+    renderToday();
     renderFilters();
     renderPrioritySummary();
-    renderTasks();
     renderFinancePanel();
     renderCronHealth();
     renderDirectives();
     updateTaskCounts();
 }
 
-// Render filter counts
-function renderFilters() {
-    const vectors = ['all', 'schedule', 'finance', 'health', 'tech', 'revenue', 'wellness', 'system'];
-    const counts = {};
-    vectors.forEach(v => {
-        if (v === 'all') {
-            counts.all = appState.tasks.filter(t => !appState.completedTaskIds.has(t.id)).length;
-        } else {
-            counts[v] = appState.tasks.filter(t => t.vector === v && !appState.completedTaskIds.has(t.id)).length;
-        }
-    });
+// ---- TODAY VIEW ----
+function renderToday() {
+    // Sort tasks chronologically by time_block label
+    const prioOrder = { p0: 0, p1: 1, p2: 2, p3: 3 };
+    const sortedTasks = sortTasksByTimeBlock(TODAY_TASKS);
 
-    vectors.forEach(v => {
-        const el = document.getElementById(`count-${v}`);
-        if (el) el.textContent = counts[v];
-    });
-}
-
-// Render priority summary badges
-function renderPrioritySummary() {
-    const summaryEl = document.getElementById('priority-summary');
-    if (!summaryEl) return;
-
-    const counts = { p0: 0, p1: 0, p2: 0, p3: 0 };
-    appState.tasks.forEach(t => {
-        if (appState.completedTaskIds.has(t.id)) return;
-        if (counts.hasOwnProperty(t.priority)) counts[t.priority]++;
-    });
-
-    // Apply current vector filter
-    let filtered = appState.tasks;
-    if (appState.currentFilter !== 'all') {
-        filtered = filtered.filter(t => t.vector === appState.currentFilter);
-    }
-
-    const fc = { p0: 0, p1: 0, p2: 0, p3: 0 };
-    filtered.forEach(t => {
-        if (appState.completedTaskIds.has(t.id)) return;
-        if (fc.hasOwnProperty(t.priority)) fc[t.priority]++;
-    });
-
-    summaryEl.innerHTML = `
-        <span class="pri-badge p0">P0 × ${fc.p0}</span>
-        <span class="pri-badge p1">P1 × ${fc.p1}</span>
-        <span class="pri-badge p2">P2 × ${fc.p2}</span>
-        <span class="pri-badge p3">P3 × ${fc.p3}</span>
-    `;
-}
-
-// Render task cards by priority group
-function renderTasks() {
-    const levels = ['p0', 'p1', 'p2', 'p3'];
     let hasVisibleTasks = false;
+    const levels = ['p0', 'p1', 'p2', 'p3'];
 
     levels.forEach(level => {
-        const gridEl = document.getElementById(`grid-${level}`);
+        const gridEl = document.getElementById(`grid-${level}-today`);
         if (!gridEl) return;
 
-        // Grouped tasks
-        let levelTasks = appState.tasks.filter(t => t.priority === level);
+        let levelTasks = sortedTasks.filter(t => t.priority === level);
 
         // Apply vector filter
         if (appState.currentFilter !== 'all') {
             levelTasks = levelTasks.filter(t => t.vector === appState.currentFilter);
         }
 
-        // Sort: active first, then by status (flagged > pending > active), then by id
-        const statusOrder = { flagged: 0, pending: 1, active: 2, completed: 3 };
-        levelTasks.sort((a, b) => {
-            const aComp = appState.completedTaskIds.has(a.id) ? 1 : 0;
-            const bComp = appState.completedTaskIds.has(b.id) ? 1 : 0;
-            if (aComp !== bComp) return aComp - bComp;
-            return (statusOrder[a.status] || 2) - (statusOrder[b.status] || 2);
-        });
-
         if (levelTasks.length > 0) hasVisibleTasks = true;
-
         gridEl.innerHTML = levelTasks.map(task => createTaskCardHTML(task)).join('');
     });
 
@@ -310,57 +321,128 @@ function renderTasks() {
         noMsg.classList.toggle('hidden', hasVisibleTasks);
     }
 
-    // Hide empty groups
-    const groups = { p0: 'group-p0', p1: 'group-p1', p2: 'group-p2', p3: 'group-p3' };
-    Object.entries(groups).forEach(([key, elId]) => {
-        const el = document.getElementById(elId);
-        if (el) {
-            const count = appState.tasks.filter(t => t.priority === key).filter(
-                t => appState.currentFilter === 'all' || t.vector === appState.currentFilter
-            ).length;
-            el.style.display = count > 0 ? 'block' : 'none';
+    // Hide empty priority groups
+    levels.forEach(key => {
+        const groupEl = document.getElementById(`group-${key}`);
+        if (groupEl) {
+            const count = sortedTasks.filter(t => t.priority === key &&
+                (appState.currentFilter === 'all' || t.vector === appState.currentFilter)).length;
+            groupEl.style.display = count > 0 ? 'block' : 'none';
+        }
+    });
+
+    // Render unfinished backlog section
+    renderBacklog();
+}
+
+// ---- AGENDA VIEW (P0/P1 only, grouped by vector) ----
+function renderAgenda() {
+    // Filter to P0 and P1 only
+    const filteredTasks = ALL_TASKS.filter(t => t.priority === 'p0' || t.priority === 'p1');
+
+    // Group by vector
+    const vectors = {};
+    const vectorOrder = ['health', 'finance', 'revenue', 'tech', 'system', 'schedule', 'wellness', 'gdrive'];
+    filteredTasks.forEach(task => {
+        const vec = task.vector;
+        if (!vectors[vec]) vectors[vec] = [];
+        vectors[vec].push(task);
+    });
+
+    // Build HTML
+    const container = document.getElementById('agenda-tasks');
+    if (!container) return;
+
+    let html = '';
+    let totalP0 = 0, totalP1 = 0;
+
+    vectorOrder.forEach(vecName => {
+        const tasks = vectors[vecName];
+        if (!tasks || tasks.length === 0) return;
+
+        // Count priorities within this vector
+        let vP0 = tasks.filter(t => t.priority === 'p0').length;
+        let vP1 = tasks.filter(t => t.priority === 'p1').length;
+        totalP0 += vP0;
+        totalP1 += vP1;
+
+        const hasP0 = vP0 > 0;
+        const hasP1 = vP1 > 0;
+        const countClass = (hasP0 && !hasP1) ? 'p0-only' : (hasP0 && hasP1) ? 'mixed' : 'mixed';
+        const vecDisplayName = VECTOR_NAMES[vecName] || vecName.toUpperCase();
+
+        html += `<div class="agenda-vector-group">`;
+        html += `<div class="agenda-vector-header">`;
+        html += `<span class="agenda-vector-name">${vecDisplayName}</span>`;
+        html += `<span class="agenda-vector-count ${countClass}">P0:${vP0} P1:${vP1} (${tasks.length})</span>`;
+        html += `</div>`;
+        html += `<div class="agenda-task-grid">`;
+
+        // Sort: P0 first, then P1; within same priority by status order
+        const statusOrder = { flagged: 0, in_progress: 0, active: 1, pending: 2 };
+        tasks.sort((a, b) => {
+            if (a.priority !== b.priority) return a.priority < b.priority ? -1 : 1;
+            return (statusOrder[a.status] || 3) - (statusOrder[b.status] || 3);
+        });
+
+        html += tasks.map(task => createAgendaTaskCardHTML(task)).join('');
+        html += `</div></div>`;
+    });
+
+    container.innerHTML = html;
+
+    // Update agenda priority summary
+    const agendaSummary = document.getElementById('agenda-priority-summary');
+    if (agendaSummary) {
+        agendaSummary.innerHTML = `
+            <span class="pri-badge p0">P0 × ${totalP0}</span>
+            <span class="pri-badge p1">P1 × ${totalP1}</span>
+        `;
+    }
+}
+
+// ---- BACKLOG SECTION ----
+function renderBacklog() {
+    const prioOrder = { p0: 0, p1: 1, p2: 2, p3: 3 };
+    const sorted = sortTasksByPriority(BACKLOG_TASKS);
+
+    ['p0', 'p1', 'p2', 'p3'].forEach(level => {
+        const gridEl = document.getElementById(`grid-${level}-backlog`);
+        if (!gridEl) return;
+
+        let levelTasks = sorted.filter(t => t.priority === level);
+        if (appState.currentFilter !== 'all') {
+            levelTasks = levelTasks.filter(t => t.vector === appState.currentFilter);
+        }
+
+        gridEl.innerHTML = levelTasks.length > 0
+            ? levelTasks.map(task => createTaskCardHTML(task)).join('')
+            : '';
+
+        const groupEl = document.getElementById(`group-${level}-backlog`);
+        if (groupEl) {
+            groupEl.style.display = levelTasks.length > 0 ? 'block' : 'none';
         }
     });
 }
 
-// Generate HTML for a single task card
-function createTaskCardHTML(task) {
-    const isCompleted = appState.completedTaskIds.has(task.id);
-    const compClass = isCompleted ? ' completed' : '';
-
-    const dotClass = isCompleted ? 'completed' : (task.status === 'flagged' ? 'flagged' : task.status);
-    const dueLabel = task.due === 'recurring-daily' ? 'DAILY' :
-                     task.due === 'recurring-twice-daily' ? '2X/DAY' :
-                     task.due;
-
-    const vectorName = VECTOR_NAMES[task.vector] || task.vector.toUpperCase();
-
-    return `
-        <div class="task-card ${task.priority}${compClass}" data-id="${task.id}" title="${task.details}">
-            <div class="task-card-header">
-                <span class="task-id">${task.id}</span>
-                <span class="task-vector-badge">${vectorName}</span>
-            </div>
-            <div class="task-title">${task.title}</div>
-            <div class="task-meta">
-                <span><span class="task-status-dot ${dotClass}"></span>${task.status.toUpperCase()}</span>
-                <span class="task-due">⏱ ${dueLabel}</span>
-            </div>
-        </div>
-    `;
-}
-
-// ===== FINANCE PANEL RENDERING =====
+// ---- FINANCE PANEL (shared) ----
 function renderFinancePanel() {
-    // Use default data since financial_vector.json is empty
     const fin = DEFAULT_FINANCE_DATA;
 
-    document.getElementById('fin-balance').textContent = fin.liquidBalance;
-    document.getElementById('fin-obligations').textContent = fin.monthlyObligations;
-    document.getElementById('fin-coverage').textContent = fin.coverageRatio;
-    document.getElementById('fin-score').textContent = `${fin.foundationScore}/10`;
+    // Mini finance (TODAY view)
+    setFinValue('fin-balance', fin.liquidBalance);
+    setFinValue('fin-obligations', fin.monthlyObligations);
+    setFinValue('fin-coverage', fin.coverageRatio);
+    setFinValue('fin-score', `${fin.foundationScore}/10`);
 
-    // Shield bars
+    // Full finance (AGENDA view)
+    setFinValue('fin-balance-full', fin.liquidBalance);
+    setFinValue('fin-obligations-full', fin.monthlyObligations);
+    setFinValue('fin-coverage-full', fin.coverageRatio);
+    setFinValue('fin-score-full', `${fin.foundationScore}/10`);
+
+    // Shield bars (full only)
     const shieldMap = { shelter: 'shelter', food: 'food', income: 'income', mobility: 'mobility' };
     Object.entries(shieldMap).forEach(([key, domKey]) => {
         const shield = fin.shields[key];
@@ -370,7 +452,6 @@ function renderFinancePanel() {
         if (barEl) {
             const pct = Math.round((shield.value / shield.max) * 100);
             barEl.style.width = `${pct}%`;
-            // Assign class based on value
             barEl.className = 'progress-fill';
             if (shield.value <= 2) barEl.classList.add('progress-critical');
             else if (shield.value <= 4) barEl.classList.add('progress-low');
@@ -380,14 +461,12 @@ function renderFinancePanel() {
         if (valEl) valEl.textContent = `${shield.value}/${shield.max}`;
     });
 
-    // Weekly bills
-    const billListEl = document.getElementById('bill-list');
+    // Weekly bills (full only)
+    const billListEl = document.getElementById('bill-list-full');
     if (billListEl) {
         let html = '';
         fin.weeklyBills.forEach(bill => {
-            const today = new Date().toDateString();
-            const isOverdue = bill.day === 'today' || false; // Would need actual date matching
-            html += `<div class="bill-item"><span class="bill-name">${bill.name} (${bill.day})</span><span class="bill-amount ${isOverdue ? 'bill-overdue' : ''}">${bill.amount}</span></div>`;
+            html += `<div class="bill-item"><span class="bill-name">${bill.name} (${bill.day})</span><span class="bill-amount">${bill.amount}</span></div>`;
         });
         if (fin.nextWeekBills && fin.nextWeekBills.length > 0) {
             html += '<div style="margin: 8px 0; font-size: 0.6rem; color: var(--text-dim); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">NEXT WEEK:</div>';
@@ -398,16 +477,22 @@ function renderFinancePanel() {
         billListEl.innerHTML = html;
     }
 
-    // Watch alerts
-    const alertsEl = document.getElementById('watch-alerts');
+    // Watch alerts (full only)
+    const alertsEl = document.getElementById('watch-alerts-full');
     if (alertsEl) {
-        alertsEl.innerHTML = fin.watchAlerts.map(a =>
-            `<div class="watch-alert ${a.level}"><span class="alert-icon">${a.text.charAt(0) === '⚠' ? a.text.substring(0, 2) : '•'}</span>${a.text.substring(2).trim()}</div>`
-        ).join('');
+        alertsEl.innerHTML = fin.watchAlerts.map(a => {
+            const iconStart = a.text.match(/^[\u26A0\ud83c\udfca\ud83d\udcca]/) ? a.text.substring(0, 2) : '•';
+            return `<div class="watch-alert ${a.level}"><span class="alert-icon">${iconStart}</span>${a.text.replace(/^[\u26A0\u26A1\U0001F4CA]+\s*/, '').trim()}</div>`;
+        }).join('');
     }
 }
 
-// ===== CRON HEALTH RENDERING =====
+function setFinValue(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+// ---- CRON HEALTH ----
 function renderCronHealth() {
     const okCount = CRON_HEALTH.filter(c => c.status === 'ok').length;
     const failCount = CRON_HEALTH.filter(c => c.status === 'fail').length;
@@ -417,16 +502,13 @@ function renderCronHealth() {
     if (summaryEl) {
         summaryEl.innerHTML = `
             <div class="cron-summary-item ok">
-                <span class="cron-dot green"></span>
-                OK: ${okCount}
+                <span class="cron-dot green"></span>OK: ${okCount}
             </div>
             <div class="cron-summary-item fail">
-                <span class="cron-dot red"></span>
-                FAILED: ${failCount}
+                <span class="cron-dot red"></span>FAILED: ${failCount}
             </div>
             ${pendingCount > 0 ? `<div class="cron-summary-item" style="border-color: rgba(255,204,0,0.4);color:var(--p2-yellow)">
-                <span class="cron-dot" style="background:var(--p2-yellow)"></span>
-                PENDING: ${pendingCount}
+                <span class="cron-dot" style="background:var(--p2-yellow)"></span>PENDING: ${pendingCount}
             </div>` : ''}
         `;
     }
@@ -443,25 +525,168 @@ function renderCronHealth() {
     }
 }
 
-// ===== DIRECTIVE ROTATION =====
-function renderDirectives() {
-    showDirective(appState.currentDirective);
+// ---- FILTER COUNTS ----
+function renderFilters() {
+    // Since we removed the old filter bar in favor of views, still keep filter button
+    // logic if any remain. The filter bar persists in the DOM from original layout.
+    const vectors = ['all', 'schedule', 'finance', 'health', 'tech', 'revenue', 'wellness', 'system'];
+    const allTasksForFilters = appState.currentView === 'today' ? TODAY_TASKS : ALL_TASKS;
+
+    const counts = {};
+    vectors.forEach(v => {
+        if (v === 'all') {
+            counts.all = allTasksForFilters.filter(t => !appState.completedTaskIds.has(t.id)).length;
+        } else {
+            counts[v] = allTasksForFilters.filter(t => t.vector === v && !appState.completedTaskIds.has(t.id)).length;
+        }
+    });
+
+    vectors.forEach(v => {
+        const el = document.getElementById(`count-${v}`);
+        if (el) el.textContent = counts[v];
+    });
 }
 
-function showDirective(index) {
-    const el = document.getElementById('directive-text');
-    if (el) {
-        el.style.opacity = 0;
-        setTimeout(() => {
-            el.textContent = DIRECTIVES[index % DIRECTIVES.length];
-            el.style.opacity = 1;
-        }, 200);
+// ---- PRIORITY SUMMARY ----
+function renderPrioritySummary() {
+    const summaryEl = document.getElementById('priority-summary');
+    if (!summaryEl) return;
+
+    const tasksForSummary = appState.currentView === 'today' ? TODAY_TASKS : ALL_TASKS;
+    const fc = { p0: 0, p1: 0, p2: 0, p3: 0 };
+    tasksForSummary.forEach(t => {
+        if (appState.completedTaskIds.has(t.id)) return;
+        if (fc.hasOwnProperty(t.priority)) fc[t.priority]++;
+    });
+
+    summaryEl.innerHTML = `
+        <span class="pri-badge p0">P0 × ${fc.p0}</span>
+        <span class="pri-badge p1">P1 × ${fc.p1}</span>
+        <span class="pri-badge p2">P2 × ${fc.p2}</span>
+        <span class="pri-badge p3">P3 × ${fc.p3}</span>
+    `;
+}
+
+// ---- TASK COUNT DISPLAY ----
+function updateTaskCounts() {
+    const all = appState.currentView === 'today' ? TODAY_TASKS : ALL_TASKS;
+    const total = all.length;
+    const active = total - appState.completedTaskIds.size;
+    const activeEl = document.getElementById('active-task-count');
+    const totalEl = document.getElementById('total-task-count');
+    if (activeEl) activeEl.textContent = `${active} ACTIVE`;
+    if (totalEl) totalEl.textContent = `${total} TOTAL`;
+}
+
+// ===== CARD GENERATORS =====
+
+function createTaskCardHTML(task) {
+    const isCompleted = appState.completedTaskIds.has(task.id);
+    const compClass = isCompleted ? ' completed' : '';
+    const dotClass = isCompleted ? 'completed' : (task.status === 'flagged' ? 'flagged' : (task.status === 'in_progress' ? 'active' : task.status));
+
+    // Determine display label from time_block or due
+    let displayLabel = '';
+    if (task.time_block) {
+        displayLabel = task.time_block === 'recurring_180m' ? 'EVERY 3H' : task.time_block.toUpperCase();
+    } else if (task.due) {
+        displayLabel = task.due === 'daily' ? 'DAILY' : task.due === 'daily monitoring' ? 'DAILY' : task.due === 'ongoing' ? 'ONGOING' : task.due === 'ongoing monitoring' ? 'ONGOING' : task.due === 'recurring' ? 'DAILY' : task.due;
     }
+
+    const vectorName = VECTOR_NAMES[task.vector] || task.vector.toUpperCase();
+
+    return `
+        <div class="task-card ${task.priority}${compClass}" data-id="${task.id}" title="${task.details}">
+            ${task.time_block ? `<span class="time-block-label">${displayLabel}</span>` : ''}
+            <div class="task-card-header">
+                <span class="task-id">${task.id}</span>
+                <span class="task-vector-badge">${vectorName}</span>
+            </div>
+            <div class="task-title">${task.title}</div>
+            <div class="task-meta">
+                <span><span class="task-status-dot ${dotClass}"></span>${task.status.toUpperCase()}</span>
+                <span class="task-due">${!task.time_block ? '⏱ ' + displayLabel : ''}</span>
+            </div>
+        </div>
+    `;
+}
+
+function createAgendaTaskCardHTML(task) {
+    const isCompleted = appState.completedTaskIds.has(task.id);
+    const compClass = isCompleted ? ' completed' : '';
+
+    let displayDue = '';
+    if (task.due) {
+        displayDue = task.due === 'daily' ? 'DAILY' :
+                     task.due === 'daily monitoring' ? 'MONITORING' :
+                     task.due === 'ongoing' ? 'ONGOING' :
+                     task.due === 'ongoing monitoring' ? 'MONITORING' :
+                     task.due === 'recurring' ? 'DAILY' :
+                     task.due === 'per contract' ? 'CONTRACT' :
+                     task.due === 'per deadline' ? 'DEADLINE' :
+                     task.due === 'before deployment' ? 'BLOCKER' :
+                     task.due === 'urgent' ? 'URGENT' :
+                     task.due === 'high priority' ? 'HIGH' :
+                     task.due === 'when convenient' ? 'LOW' :
+                     task.due;
+    }
+
+    const statusClass = task.status === 'flagged' ? 'flagged' : (task.status === 'in_progress' ? 'active' : task.status);
+
+    return `
+        <div class="agenda-task-card ${task.priority}${compClass}" data-id="${task.id}" title="${task.details}">
+            <div class="agenda-task-top">
+                <span class="agenda-task-id">${task.id}</span>
+                <span class="agenda-task-status ${statusClass}">${task.status.toUpperCase()}</span>
+            </div>
+            <div class="agenda-task-title">${task.title}</div>
+            <div class="agenda-task-detail">${task.details}</div>
+            <div class="agenda-task-footer">
+                <span class="agenda-task-due">⏱ ${displayDue}</span>
+                <span class="task-vector-badge">${VECTOR_NAMES[task.vector] || task.vector.toUpperCase()}</span>
+            </div>
+        </div>
+    `;
+}
+
+// ===== SORTING HELPERS =====
+function sortTasksByTimeBlock(tasks) {
+    // Special time block ordering
+    const timeOrder = {
+        '08:00': 1, '09:00': 2, '10:00': 3, '10:30': 4,
+        '12:00': 5, '13:00': 6, '13:30': 7, '15:00': 8,
+        '18:00': 9, '19:00': 10, 'recurring_180m': 11,
+        'ALL DAY': 12, '23:00': 13
+    };
+
+    const prioOrder = { p0: 0, p1: 1, p2: 2, p3: 3 };
+
+    return [...tasks].sort((a, b) => {
+        // Priority first
+        const pDiff = prioOrder[a.priority] - prioOrder[b.priority];
+        if (pDiff !== 0) return pDiff;
+
+        // Then time block
+        const ta = a.time_block ? (timeOrder[a.time_block] ?? 99) : 99;
+        const tb = b.time_block ? (timeOrder[b.time_block] ?? 99) : 99;
+        if (ta !== tb) return ta - tb;
+
+        return a.id.localeCompare(b.id);
+    });
+}
+
+function sortTasksByPriority(tasks) {
+    const prioOrder = { p0: 0, p1: 1, p2: 2, p3: 3 };
+    return [...tasks].sort((a, b) => {
+        const pDiff = prioOrder[a.priority] - prioOrder[b.priority];
+        if (pDiff !== 0) return pDiff;
+        return a.id.localeCompare(b.id);
+    });
 }
 
 // ===== EVENT LISTENERS =====
 function setupEventListeners() {
-    // Filter buttons
+    // Filter buttons (if present)
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -469,13 +694,13 @@ function setupEventListeners() {
             appState.currentFilter = btn.dataset.vector;
             renderFilters();
             renderPrioritySummary();
-            renderTasks();
+            if (appState.currentView === 'today') renderToday();
         });
     });
 
-    // Task completion toggle
+    // Task completion toggle (delegated from tasks-section)
     document.getElementById('tasks-section').addEventListener('click', (e) => {
-        const card = e.target.closest('.task-card');
+        const card = e.target.closest('.task-card, .agenda-task-card');
         if (!card) return;
 
         const taskId = card.dataset.id;
@@ -554,15 +779,16 @@ function setupEventListeners() {
 function saveConfig() {
     try {
         localStorage.setItem('cyber_config', JSON.stringify(appState.config));
-    } catch (e) { /* ignore */ }
+    } catch (e) {}
 }
 
-// ===== TASK COUNT DISPLAY =====
-function updateTaskCounts() {
-    const total = appState.tasks.length;
-    const active = total - appState.completedTaskIds.size;
-    document.getElementById('active-task-count').textContent = `${active} ACTIVE`;
-    document.getElementById('total-task-count').textContent = `${total} TOTAL`;
+// ===== SYNC INDICATOR =====
+function updateSyncIndicator() {
+    const el = document.getElementById('last-sync');
+    if (el) {
+        const now = new Date();
+        el.textContent = `LAST SYNC: ${now.toLocaleTimeString('en-GB')}`;
+    }
 }
 
 // ===== LOCAL STORAGE INDICATOR =====
@@ -578,18 +804,8 @@ function updateLSIndicator() {
     }
 }
 
-// ===== SYNC INDICATOR =====
-function updateSyncIndicator() {
-    const el = document.getElementById('last-sync');
-    if (el) {
-        const now = new Date();
-        el.textContent = `LAST SYNC: ${now.toLocaleTimeString('en-GB')}`;
-    }
-}
-
 // ===== FLASH STATUS MESSAGE =====
 function flashStatus(message, color) {
-    // Create temporary floating notification
     const notif = document.createElement('div');
     notif.textContent = message;
     notif.style.cssText = `
@@ -600,7 +816,6 @@ function flashStatus(message, color) {
         box-shadow: 0 0 40px ${color}40; animation: notif-fade 1.5s ease forwards;
     `;
 
-    // Add animation keyframes if not already present
     if (!document.getElementById('notif-style')) {
         const style = document.createElement('style');
         style.id = 'notif-style';
@@ -617,6 +832,22 @@ function flashStatus(message, color) {
 
     document.body.appendChild(notif);
     setTimeout(() => notif.remove(), 1600);
+}
+
+// ===== DIRECTIVE ROTATION =====
+function renderDirectives() {
+    showDirective(appState.currentDirective);
+}
+
+function showDirective(index) {
+    const el = document.getElementById('directive-text');
+    if (el) {
+        el.style.opacity = 0;
+        setTimeout(() => {
+            el.textContent = DIRECTIVES[index % DIRECTIVES.length];
+            el.style.opacity = 1;
+        }, 200);
+    }
 }
 
 // ===== REAL-TIME CLOCK =====
@@ -650,7 +881,6 @@ function startClock() {
 
 // ===== RECOVERY DAY COUNTDOWN =====
 function startCountdown() {
-    // Recovery Day target: August 4, 2026
     const recoveryDate = new Date('2026-08-04T00:00:00Z');
 
     function tick() {
@@ -715,32 +945,6 @@ function setupKonamiCode() {
             idx = 0;
         }
     });
-
-    // Also support physical button presses for mobile
-    let konamiBtnIdx = 0;
-    const konamiButtons = [
-        document.querySelector('.clock-widget'),
-        document.querySelector('.countdown-widget'),
-        document.querySelector('.tasks-widget'),
-        document.querySelector('.finance-widget'),
-        document.querySelector('.cron-widget'),
-        document.querySelector('.directives-widget'),
-        document.querySelector('.settings-widget'),
-        document.querySelector('.weather-widget')
-    ];
-
-    konamiButtons.forEach((el, i) => {
-        if (!el) return;
-        // Map to directional pattern
-        el.addEventListener('click', () => {
-            const dirSequence = [
-                'up', 'up', 'down', 'down', 'left', 'right', 'left', 'right', 'b', 'a'
-            ];
-            // Each widget press maps to a step
-            if (i === 0 || i === 1) { /* up */ }
-            // Simplified: just track sequential clicks
-        });
-    });
 }
 
 function triggerAGI() {
@@ -748,11 +952,8 @@ function triggerAGI() {
     if (!overlay) return;
 
     overlay.classList.remove('hidden');
-
-    // Flash status
     flashStatus('⚡ AGI ENGAGED ⚡', '#b026ff');
 
-    // Auto-hide after animation completes
     setTimeout(() => {
         overlay.classList.add('hidden');
     }, 3500);
