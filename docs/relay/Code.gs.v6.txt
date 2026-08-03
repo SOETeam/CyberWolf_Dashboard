@@ -1,0 +1,192 @@
+/**
+ * CyberWolf Dashboard — Google Sheets Bridge Relay (v6)
+ * 
+ * Server-side Apps Script middleware between browser dashboard
+ * and Google Sheets. Handles CORS, JSON parsing, task sync.
+ * 
+ * v6 FIX: Corrected setHeaders({}) pattern for CORS headers.
+ *   Previous versions used individual .setHeader() calls which are
+ *   NOT supported by ContentService.createTextOutput().
+ *   v6 uses output.setHeaders({...object...}) to batch-set headers.
+ * 
+ * DEPLOYMENT:
+ * 1. Create Sheet "CyberWolf-Sync" with tab "Sync" + headers
+ * 2. Paste this into Extensions > Apps Script
+ * 3. Deploy as Web App: Execute as Me, Access Anyone
+ * 4. Save the Web App URL
+ * 5. Paste URL into dashboard.js CYBERWOLF_RELAY_URL constant
+ */
+
+// ─── Constants ──────────────────────────────────────────────
+var SHEET_NAME = 'Sync';
+var SYNC_COLUMNS = ['userId', 'deviceId', 'taskId', 'taskLabel', 'completed', 'completedBy', 'timestamp', 'version'];
+
+// ─── Entry Points ──────────────────────────────────────────
+
+/** GET endpoint: fetch task state for user. Query: ?action=state&userId=X */
+function doGet(e) {
+  var p = parseParams(e);
+  try {
+    if (p.action === 'state') {
+      return jsonResp(getUserState(p.userId));
+    } else if (p.action === 'heartbeat') {
+      return jsonResp({ status: 'ok', rows: getRowCount() });
+    }
+    return jsonResp({ error: 'unknown action' }, 400);
+  } catch (err) {
+    return jsonResp({ error: 'doGet failed', message: err.toString() }, 500);
+  }
+}
+
+/** POST endpoint: submit task completion. Body: {userId, deviceId, taskId, completed, taskLabel} */
+function doPost(e) {
+  try {
+    var body = JSON.parse(e.postData.contents);
+    if (!body.userId || !body.deviceId || !body.taskId) {
+      return jsonResp({ error: 'missing fields', required: ['userId','deviceId','taskId'] }, 400);
+    }
+    var result = processSync(body);
+    return jsonResp({ ok: true, taskId: body.taskId, version: result.version });
+  } catch (err) {
+    return jsonResp({ error: 'doPost failed', message: err.toString() }, 500);
+  }
+}
+
+/** OPTIONS handler for CORS preflight */
+function doOptions() {
+  var output = ContentService.createTextOutput('');
+  output.setMimeType(ContentService.MimeType.TEXT);
+  output.setHeaders({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+  });
+  return output;
+}
+
+// ─── Core Logic ────────────────────────────────────────────
+
+/** Get latest task state per taskId for a userId (upsert-based LWW) */
+function getUserState(userId) {
+  var sheet = getOrCreateSheet();
+  var data = sheet.getDataRange().getValues();
+  var taskMap = {};
+  
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var rUserId = String(row[0] || '');
+    var rTaskId = String(row[2] || '');
+    var rVersion = Number(row[7] || 0);
+    
+    if (rUserId !== userId) continue;
+    if (!taskMap[rTaskId] || rVersion > taskMap[rTaskId].version) {
+      taskMap[rTaskId] = {
+        id: rTaskId,
+        label: String(row[3] || rTaskId),
+        completed: row[4] === true || row[4] == 'TRUE' || row[4] == 'True',
+        timestamp: formatTS(row[6]),
+        version: rVersion
+      };
+    }
+  }
+  
+  var tasks = [];
+  for (var key in taskMap) tasks.push(taskMap[key]);
+  tasks.sort(function(a, b) { return b.timestamp.localeCompare(a.timestamp); });
+  
+  return { userId: userId, tasks: tasks, count: tasks.length };
+}
+
+/** Upsert: update existing row or append new row for this userId+taskId */
+function processSync(event) {
+  var sheet = getOrCreateSheet();
+  var data = sheet.getDataRange().getValues();
+  var existingRow = -1;
+  var maxVer = 0;
+  
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === event.userId && String(data[i][2]) === event.taskId) {
+      var v = Number(data[i][7] || 0);
+      if (v >= maxVer) { maxVer = v; existingRow = i + 1; } // 1-indexed
+    }
+  }
+  
+  var newRow = [
+    event.userId,
+    event.deviceId,
+    event.taskId,
+    event.taskLabel || event.taskId,
+    event.completed ? true : false,
+    event.deviceId,
+    new Date(),
+    maxVer + 1
+  ];
+  
+  if (existingRow > 0) {
+    sheet.getRange(existingRow, 1, 1, newRow.length).setValues([newRow]);
+  } else {
+    sheet.appendRow(newRow);
+  }
+  
+  return { version: maxVer + 1, updated: existingRow > 0 };
+}
+
+// ─── Helpers ───────────────────────────────────────────────
+
+function getOrCreateSheet() {
+  var ss;
+  var id = PropertiesService.getScriptProperties().getProperty('sheetId');
+  if (id) {
+    ss = SpreadsheetApp.openById(id);
+  } else {
+    ss = SpreadsheetApp.create('CyberWolf-Sync');
+    PropertiesService.getScriptProperties().setProperty('sheetId', ss.getId());
+  }
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+    sheet.appendRow(SYNC_COLUMNS);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function getRowCount() {
+  return getOrCreateSheet().getDataRange().getNumRows() - 1;
+}
+
+function parseParams(e) {
+  var params = {};
+  if (e.queryString) {
+    e.queryString.split('&').forEach(function(pair) {
+      var kv = pair.split('=');
+      params[kv[0]] = decodeURIComponent(kv[1] || '');
+    });
+  }
+  return params;
+}
+
+function formatTS(ts) {
+  try {
+    if (ts instanceof Date) return ts.toISOString();
+    return String(ts);
+  } catch(e) { return String(ts); }
+}
+
+function setCorsHeaders(output) {
+  // v6: Use object-based setHeaders() instead of individual setHeader() calls
+  // ContentService.createTextOutput() does not support .setHeader(name, value)
+  output.setHeaders({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+  });
+}
+
+function jsonResp(obj, code) {
+  var mimeType = ContentService.MimeType.JSON;
+  var output = ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(mimeType);
+  setCorsHeaders(output);
+  if (code && code !== 200) output.setStatus(code);
+  return output;
+}
