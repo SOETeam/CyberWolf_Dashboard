@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CyberWolf Relay v8 Verification</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Courier New', monospace; background: #0a0a1a; color: #00ff88; padding: 20px; min-height: 100vh; }
+  h1 { text-align: center; color: #ff0066; margin-bottom: 20px; font-size: 1.4em; }
+  h2 { color: #ff0066; margin: 16px 0 8px; font-size: 1.1em; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .config-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+  .config-bar label { color: #aaa; font-size: 0.85em; }
+  .config-bar input { background: #111; border: 1px solid #333; color: #0f0; padding: 8px 12px; font-family: inherit; font-size: 0.9em; flex: 1; min-width: 300px; }
+  .config-bar button { background: #ff0066; color: white; border: none; padding: 8px 16px; cursor: pointer; font-family: inherit; font-weight: bold; }
+  .config-bar button:hover { background: #ff3388; }
+  .test-group { background: #0d0d20; border: 1px solid #222; border-radius: 6px; padding: 14px; margin-bottom: 12px; }
+  .test-name { font-weight: bold; color: #ffcc00; margin-bottom: 6px; }
+  .test-desc { color: #888; font-size: 0.8em; margin-bottom: 10px; }
+  .test-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 0.85em; }
+  .test-label { color: #aaa; }
+  .test-value { color: #0f0; word-break: break-all; text-align: right; max-width: 70%; }
+  .PASS { color: #00ff88 !important; }
+  .FAIL { color: #ff3344 !important; }
+  .RUNNING { color: #ffcc00 !important; }
+  .status-badge { display: inline-block; padding: 1px 8px; border-radius: 3px; font-size: 0.75em; font-weight: bold; }
+  .badge-pass { background: #003322; color: #00ff88; }
+  .badge-fail { background: #330011; color: #ff3344; }
+  .badge-run { background: #333300; color: #ffcc00; }
+  .log-area { background: #050510; border: 1px solid #222; border-radius: 4px; padding: 10px; max-height: 200px; overflow-y: auto; font-size: 0.78em; color: #888; line-height: 1.5; }
+  .log-entry { padding: 2px 0; }
+  .log-entry.ok { color: #00ff88; }
+  .log-entry.err { color: #ff3344; }
+  .log-entry.info { color: #8888ff; }
+  .btn-row { display: flex; gap: 10px; margin: 16px 0; }
+  .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-family: inherit; font-weight: bold; font-size: 0.9em; }
+  .btn-primary { background: #ff0066; color: white; }
+  .btn-primary:hover { background: #ff3388; }
+  .btn-secondary { background: #222; color: #0f0; border: 1px solid #444; }
+  .btn-secondary:hover { background: #333; }
+  .summary { background: #0d0d20; border: 2px solid #333; border-radius: 8px; padding: 16px; margin-top: 16px; }
+  .summary-title { color: #ff0066; font-size: 1.1em; margin-bottom: 8px; }
+  .summary-score { font-size: 2em; font-weight: bold; text-align: center; margin: 12px 0; }
+  .score-good { color: #00ff88; }
+  .score-warn { color: #ffcc00; }
+  .score-bad { color: #ff3344; }
+  code { background: #1a1a2e; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; }
+</style>
+</head>
+<body>
+
+<h1>⚡ CyberWolf Relay v8 Verification Suite ⚡</h1>
+
+<div class="config-bar">
+  <label for="relay-url">Relay URL:</label>
+  <input id="relay-url" type="text" value="https://script.google.com/macros/s/AKfycbwf2EwChISyvFZf3GYCACeYp_Dn4xZlG4Xwi08jlPL31TvAy4cJxroDOy6dF0Jb8JdC/exec" placeholder="Enter your Apps Script web app URL">
+  <button onclick="runAllTests()">▶ Run All Tests</button>
+</div>
+
+<!-- TEST GROUP 1: GET Routing -->
+<h2>📡 Test Group A — GET Path Routing</h2>
+
+<div class="test-group" id="tg-routing1">
+  <div class="test-name">A1. Path-based /state?userId=sophia</div>
+  <div class="test-desc">Tests the primary client call pattern: GET ${URL}/state?userId=sophia. v7 should FAIL (unknown action), v8 should PASS.</div>
+  <div class="test-row"><span class="test-label">URL:</span><span class="test-value" id="r-a1"></span></div>
+  <div class="test-row"><span class="test-label">Status:</span><span class="test-value" id="r-a1-status">—</span></div>
+  <div class="test-row"><span class="test-label">Body:</span><span class="test-value" id="r-a1-body">—</span></div>
+</div>
+
+<div class="test-group" id="tg-routing2">
+  <div class="test-name">A2. Query-param ?action=state&userId=sophia</div>
+  <div class="test-desc">Tests backward compatibility: legacy ?action=state parameter format. Should work on both v7 and v8.</div>
+  <div class="test-row"><span class="test-label">URL:</span><span class="test-value" id="r-a2"></span></div>
+  <div class="test-row"><span class="test-label">Status:</span><span class="test-value" id="r-a2-status">—</span></div>
+  <div class="test-row"><span class="test-label">Body:</span><span class="test-value" id="r-a2-body">—</span></div>
+</div>
+
+<div class="test-group" id="tg-routing3">
+  <div class="test-name">A3. Path-based /heartbeat</div>
+  <div class="test-desc">Tests heartbeat via path segment. Both v7 and v8 should support this via path inspection.</div>
+  <div class="test-row"><span class="test-label">URL:</span><span class="test-value" id="r-a3"></span></div>
+  <div class="test-row"><span class="test-label">Status:</span><span class="test-value" id="r-a3-status">—</span></div>
+  <div class="test-row"><span class="test-label">Body:</span><span class="test-value" id="r-a3-body">—</span></div>
+</div>
+
+<!-- TEST GROUP 2: Response Schema -->
+<h2>📋 Test Group B — Response Schema</h2>
+
+<div class="test-group" id="tg-schema1">
+  <div class="test-name">B1. completedTaskIds is array</div>
+  <div class="test-desc">After fetching /state, verify response has Array.isArray(completedTaskIds) === true. This is what dashboard.js checks on line ~240.</div>
+  <div class="test-row"><span class="test-label">Passed:</span><span class="test-value" id="r-b1">—</span></div>
+</div>
+
+<div class="test-group" id="tg-schema2">
+  <div class="test-name">B2. No nested tasks array in response</div>
+  <div class="test-desc">v7 returns { userId, tasks: [...] }. v8 returns { completedTaskIds: [...], lastUpdated, lastDevice }. Verify the shape matches v8 expectations.</div>
+  <div class="test-row"><span class="test-label">Has completedTaskIds:</span><span class="test-value" id="r-b2-has">—</span></div>
+  <div class="test-row"><span class="test-label">Missing old tasks field:</span><span class="test-value" id="r-b2-nomissing">—</span></div>
+</div>
+
+<!-- TEST GROUP 3: POST Payload Mapping -->
+<h2>📬 Test Group C — POST Payload Mapping</h2>
+
+<div class="test-group" id="tg-post1">
+  <div class="test-name">C1. Event: "task_completed" (no completed field)</div>
+  <div class="test-desc">Dashboard.js sends { event: 'task_completed' } without a completed boolean. v8 must derive completed=true from the event name. Should succeed on v8, fail on v7.</div>
+  <div class="test-row"><span class="test-label">Payload:</span><span class="test-value" id="r-c1-payload">{ event: 'task_completed', userId: 'verify_test', deviceId: 'test-device', taskId: 'sched-verify-001' }</span></div>
+  <div class="test-row"><span class="test-label">Status:</span><span class="test-value" id="r-c1-status">—</span></div>
+  <div class="test-row"><span class="test-label">Body:</span><span class="test-value" id="r-c1-body">—</span></div>
+</div>
+
+<div class="test-group" id="tg-post2">
+  <div class="test-name">C2. Event: "task_restored"</div>
+  <div class="test-desc">Tests the complementary event type. Should map to completed=false. Dashboard.js sends this when unchecking a task.</div>
+  <div class="test-row"><span class="test-label">Payload:</span><span class="test-value" id="r-c2-payload">{ event: 'task_restored', userId: 'verify_test', deviceId: 'test-device', taskId: 'sched-verify-001' }</span></div>
+  <div class="test-row"><span class="test-label">Status:</span><span class="test-value" id="r-c2-status">—</span></div>
+  <div class="test-row"><span class="test-label">Body:</span><span class="test-value" id="r-c2-body">—</span></div>
+</div>
+
+<div class="test-group" id="tg-post3">
+  <div class="test-name">C3. Explicit completed: true (legacy v7 format)</div>
+  <div class="test-desc">Backward compatibility: body contains explicit completed:true field. Should work on both v7 and v8.</div>
+  <div class="test-row"><span class="test-label">Payload:</span><span class="test-value" id="r-c3-payload">{ completed: true, userId: 'verify_test', deviceId: 'test-device', taskId: 'sched-verify-002' }</span></div>
+  <div class="test-row"><span class="test-label">Status:</span><span class="test-value" id="r-c3-status">—</span></div>
+  <div class="test-row"><span class="test-label">Body:</span><span class="test-value" id="r-c3-body">—</span></div>
+</div>
+
+<div class="test-group" id="tg-post4">
+  <div class="test-name">C4. Full dashboard.js payload shape</div>
+  <div class="test-desc">Tests the exact payload shape sent by dashboard.js notifyRelay() function (lines 301-313). Contains event, taskId, taskTitle, etc. — but NO completed boolean.</div>
+  <div class="test-row"><span class="test-label">Payload:</span><span class="test-value" id="r-c4-payload">Full dashboard.js notification payload with event='task_completed' and metadata fields</span></div>
+  <div class="test-row"><span class="test-label">Status:</span><span class="test-value" id="r-c4-status">—</span></div>
+  <div class="test-row"><span class="test-label">Body:</span><span class="test-value" id="r-c4-body">—</span></div>
+</div>
+
+<!-- LOG -->
+<h2>📝 Execution Log</h2>
+<div class="log-area" id="log-area"></div>
+
+<!-- SUMMARY -->
+<div class="summary" id="summary" style="display:none;">
+  <div class="summary-title">VERIFICATION RESULTS</div>
+  <div class="summary-score" id="summary-score"></div>
+  <div id="summary-details"></div>
+</div>
+
+<script>
+const tests = [];
+let results = [];
+
+function log(msg, cls = '') {
+  const area = document.getElementById('log-area');
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${cls}`;
+  entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  area.appendChild(entry);
+  area.scrollTop = area.scrollHeight;
+}
+
+function setResult(testId, passed, detail) {
+  const el = document.getElementById(`r-${testId}-status`);
+  if (el) {
+    el.innerHTML = `<span class="status-badge ${passed ? 'badge-pass' : 'badge-fail'}">${passed ? '✓ PASS' : '✗ FAIL'}</span>${detail ? ' ' + detail : ''}`;
+  }
+  results.push({ id: testId, passed, detail });
+}
+
+function setBodyResult(testId, body) {
+  const el = document.getElementById(`r-${testId}-body`);
+  if (el) {
+    try { el.textContent = JSON.stringify(typeof body === 'string' ? JSON.parse(body) : body, null, 2); }
+    catch(e) { el.textContent = typeof body === 'string' ? body : String(body); }
+  }
+}
+
+// ===== ROUTING TESTS =====
+async function testA1() {
+  const url = document.getElementById('relay-url').value.replace(/\/+$/, '');
+  const fullUrl = `${url}/state?userId=verify_test`;
+  document.getElementById('r-a1').textContent = fullUrl;
+  try {
+    const resp = await fetch(fullUrl, { signal: AbortSignal.timeout(8000) });
+    const body = await resp.text();
+    let parsed;
+    try { parsed = JSON.parse(body); } catch(e) { parsed = { raw: body }; }
+    setBodyResult('a1', body);
+    const hasCompletedIds = parsed.completedTaskIds !== undefined && Array.isArray(parsed.completedTaskIds);
+    const isOldSchema = parsed.tasks !== undefined && !hasCompletedIds;
+    setResult('a1', hasCompletedIds, isOldSchema ? '(old schema! upgrade to v8)' : '');
+  } catch(e) {
+    log(`A1 ERROR: ${e.message}`, 'err');
+    setResult('a1', false, `error: ${e.message}`);
+  }
+}
+
+async function testA2() {
+  const url = document.getElementById('relay-url').value.replace(/\/+$/, '');
+  const fullUrl = `${url}?action=state&userId=verify_test`;
+  document.getElementById('r-a2').textContent = fullUrl;
+  try {
+    const resp = await fetch(fullUrl, { signal: AbortSignal.timeout(8000) });
+    const body = await resp.text();
+    let parsed;
+    try { parsed = JSON.parse(body); } catch(e) { parsed = { raw: body }; }
+    setBodyResult('a2', body);
+    const hasCompletedIds = parsed.completedTaskIds !== undefined && Array.isArray(parsed.completedTaskIds);
+    const isOldSchema = parsed.tasks !== undefined && !hasCompletedIds;
+    setResult('a2', hasCompletedIds, isOldSchema ? '(old schema! upgrade to v8)' : '');
+  } catch(e) {
+    log(`A2 ERROR: ${e.message}`, 'err');
+    setResult('a2', false, `error: ${e.message}`);
+  }
+}
+
+async function testA3() {
+  const url = document.getElementById('relay-url').value.replace(/\/+$/, '');
+  const fullUrl = `${url}/heartbeat`;
+  document.getElementById('r-a3').textContent = fullUrl;
+  try {
+    const resp = await fetch(fullUrl, { signal: AbortSignal.timeout(8000) });
+    const body = await resp.text();
+    let parsed;
+    try { parsed = JSON.parse(body); } catch(e) { parsed = { raw: body }; }
+    setBodyResult('a3', body);
+    setResult('a3', parsed.status === 'ok', `rows: ${parsed.rows ?? 'N/A'}`);
+  } catch(e) {
+    log(`A3 ERROR: ${e.message}`, 'err');
+    setResult('a3', false, `error: ${e.message}`);
+  }
+}
+
+// ===== SCHEMA TESTS =====
+function runSchemaChecks(bodyStr) {
+  let parsed;
+  try { parsed = JSON.parse(bodyStr); } catch(e) { parsed = {}; }
+  
+  // B1: completedTaskIds is array
+  const b1 = Array.isArray(parsed.completedTaskIds);
+  document.getElementById('r-b1').innerHTML = `<span class="${b1 ? 'PASS' : 'FAIL'}">${b1 ? '✓ Yes — valid' : '✗ No — missing or not array'}</span>`;
+  results.push({ id: 'b1', passed: b1, detail: '' });
+  
+  // B2: has completedTaskIds, no old tasks field
+  const hasNew = parsed.completedTaskIds !== undefined;
+  const noOld = parsed.tasks === undefined;
+  document.getElementById('r-b2-has').innerHTML = `<span class="${hasNew ? 'PASS' : 'FAIL'}">${hasNew ? '✓ Present' : '✗ Missing'}</span>`;
+  document.getElementById('r-b2-nomissing').innerHTML = `<span class="${noOld ? 'PASS' : 'FAIL'}">${noOld ? '✓ Clean (no old schema)' : '✗ Still has tasks field'}</span>`;
+  results.push({ id: 'b2', passed: hasNew && noOld, detail: '' });
+}
+
+// ===== POST TESTS =====
+async function testC1() {
+  const url = document.getElementById('relay-url').value.replace(/\/+$/, '');
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: 'task_completed',
+        userId: 'verify_test',
+        deviceId: 'test-device',
+        taskId: 'sched-verify-001'
+      }),
+      signal: AbortSignal.timeout(8000)
+    });
+    const body = await resp.text();
+    setBodyResult('c1', body);
+    let parsed;
+    try { parsed = JSON.parse(body); } catch(e) { parsed = { raw: body }; }
+    setResult('c1', parsed.ok === true, `version: ${parsed.version ?? 'N/A'}`);
+  } catch(e) {
+    log(`C1 ERROR: ${e.message}`, 'err');
+    setResult('c1', false, `error: ${e.message}`);
+  }
+}
+
+async function testC2() {
+  const url = document.getElementById('relay-url').value.replace(/\/+$/, '');
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: 'task_restored',
+        userId: 'verify_test',
+        deviceId: 'test-device',
+        taskId: 'sched-verify-001'
+      }),
+      signal: AbortSignal.timeout(8000)
+    });
+    const body = await resp.text();
+    setBodyResult('c2', body);
+    let parsed;
+    try { parsed = JSON.parse(body); } catch(e) { parsed = { raw: body }; }
+    setResult('c2', parsed.ok === true, `version: ${parsed.version ?? 'N/A'}`);
+  } catch(e) {
+    log(`C2 ERROR: ${e.message}`, 'err');
+    setResult('c2', false, `error: ${e.message}`);
+  }
+}
+
+async function testC3() {
+  const url = document.getElementById('relay-url').value.replace(/\/+$/, '');
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        completed: true,
+        userId: 'verify_test',
+        deviceId: 'test-device',
+        taskId: 'sched-verify-002'
+      }),
+      signal: AbortSignal.timeout(8000)
+    });
+    const body = await resp.text();
+    setBodyResult('c3', body);
+    let parsed;
+    try { parsed = JSON.parse(body); } catch(e) { parsed = { raw: body }; }
+    setResult('c3', parsed.ok === true, `version: ${parsed.version ?? 'N/A'}`);
+  } catch(e) {
+    log(`C3 ERROR: ${e.message}`, 'err');
+    setResult('c3', false, `error: ${e.message}`);
+  }
+}
+
+async function testC4() {
+  const url = document.getElementById('relay-url').value.replace(/\/+$/, '');
+  try {
+    const payload = {
+      userId: 'sophia',
+      deviceId: 'browser-' + Math.random().toString(36).substr(2, 6),
+      event: 'task_completed',
+      taskId: 'sched-001',
+      taskTitle: 'Daily Boot Sequence',
+      taskVector: 'schedule',
+      taskPriority: 'p0',
+      remainingCompleted: 4,
+      totalTasks: 12,
+      timestamp: new Date().toISOString()
+    };
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000)
+    });
+    const body = await resp.text();
+    setBodyResult('c4', body);
+    let parsed;
+    try { parsed = JSON.parse(body); } catch(e) { parsed = { raw: body }; }
+    setResult('c4', parsed.ok === true, `version: ${parsed.version ?? 'N/A'}`);
+  } catch(e) {
+    log(`C4 ERROR: ${e.message}`, 'err');
+    setResult('c4', false, `error: ${e.message}`);
+  }
+}
+
+// ===== RUN ALL =====
+async function runAllTests() {
+  results = [];
+  document.getElementById('log-area').innerHTML = '';
+  document.getElementById('summary').style.display = 'none';
+  log('=== CyberWolf Relay v8 Verification Suite ===', 'info');
+  
+  const url = document.getElementById('relay-url').value.replace(/\/+$/, '');
+  log(`Target relay: ${url}`, 'info');
+  
+  // Routing tests (parallel)
+  log('Running GET routing tests...', 'info');
+  await Promise.all([testA1(), testA2(), testA3()]);
+  
+  // Collect state body for schema checks
+  log('Analyzing response schema from /state...', 'info');
+  try {
+    const resp = await fetch(`${url}/state?userId=verify_test`, { signal: AbortSignal.timeout(8000) });
+    const body = await resp.text();
+    runSchemaChecks(body);
+  } catch(e) {
+    document.getElementById('r-b1').textContent = `ERROR: ${e.message}`;
+    document.getElementById('r-b2-has').textContent = `ERROR`;
+    document.getElementById('r-b2-nomissing').textContent = `ERROR`;
+    log(`Schema check ERROR: ${e.message}`, 'err');
+  }
+  
+  // POST tests (parallel)
+  log('Running POST payload mapping tests...', 'info');
+  await Promise.all([testC1(), testC2(), testC3(), testC4()]);
+  
+  showSummary();
+}
+
+function showSummary() {
+  const total = results.filter(r => r.id.startsWith('a') || r.id.startsWith('c')).length;
+  const passed = results.filter(r => r.passed).length;
+  const scoreEl = document.getElementById('summary-score');
+  const pct = total > 0 ? Math.round(passed / total * 100) : 0;
+  
+  let scoreClass = 'score-bad';
+  if (pct >= 100) scoreClass = 'score-good';
+  else if (pct >= 75) scoreClass = 'score-warn';
+  
+  scoreEl.className = `summary-score ${scoreClass}`;
+  scoreEl.textContent = `${passed}/${total} (${pct}%)`;
+  
+  let detailsHtml = '<div style="margin-top:12px;">';
+  for (const r of results) {
+    const icon = r.passed ? '✓' : '✗';
+    detailsHtml += `<div style="padding:2px 0;color:${r.passed ? '#00ff88' : '#ff3344'}">${icon} ${r.id}: ${r.detail || (r.passed ? 'PASS' : 'FAIL')}</div>`;
+  }
+  detailsHtml += '</div>';
+  
+  document.getElementById('summary-details').innerHTML = detailsHtml;
+  document.getElementById('summary').style.display = 'block';
+  
+  log(`\n=== Summary: ${passed}/${total} tests passed (${pct}%) ===`, passed === total ? 'ok' : 'err');
+}
+</script>
+
+</body>
+</html>
