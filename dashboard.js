@@ -10,7 +10,7 @@
 // ===== WEBHOOK INTEGRATION =====
 const CYBERWOLF_RELAY_URL = 'https://script.google.com/macros/s/AKfycbze-w-UZZ_4RcDMMh4pa5lD85lJWvlx_9W5S8V5QWwM0_uHSRDEVsZvkDathdVsZVn9/exec';
 // ^ CyberWolf Sheets Bridge relay — deployed Aug 3, 2026 v2 by Sophia (Anyone access)
-// Cross-device sync: all devices poll /state, POST /sync on completion
+// Cross-device sync: all devices GET /state, GET /push — zero CORS preflight
 // Nyx notified every 5 min via Hermes cron polling Sheet
 // Fallback: if network unavailable, local-only mode activates automatically
 // ===== ACCESS GATE =====
