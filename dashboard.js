@@ -281,8 +281,8 @@ function saveCompletions() {
 }
 
 // ===== RELAY NOTIFICATION FUNCTION =====
-// Replaces notifyHermes() for cross-device sync.
-// Sends task completion/restoration through Cloudflare Worker relay.
+// Sends task completion/restoration via GET (no CORS preflight).
+// GET-based protocol: action=push&userId=sophia&taskIds=id1,id2,...
 async function notifyRelay(taskId, wasCompleted) {
     try {
         const task = ALL_TASKS.find(t => t.id === taskId);
@@ -291,27 +291,30 @@ async function notifyRelay(taskId, wasCompleted) {
             return;
         }
 
-        const allCount = ALL_TASKS.length;
-        const remaining = allCount - appState.completedTaskIds.size;
-        const userId = 'sophia'; // TODO: configurable per-user in future
+        const userId = 'sophia';
 
-        await fetch(`${CYBERWOLF_RELAY_URL}?action=sync`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: userId,
-                deviceId: getDeviceId(),
-                event: wasCompleted ? 'task_restored' : 'task_completed',
-                taskId: taskId,
-                taskTitle: task.title,
-                taskVector: task.vector,
-                taskPriority: task.priority,
-                remainingCompleted: remaining,
-                totalTasks: allCount,
-                timestamp: new Date().toISOString(),
-            }),
-            signal: AbortSignal.timeout(5000),
-        });
+        if (wasCompleted) {
+            // Push this single task ID via GET query param
+            await fetch(
+                `${CYBERWOLF_RELAY_URL}?action=push&userId=${userId}&taskIds=${encodeURIComponent(taskId)}`,
+                { signal: AbortSignal.timeout(5000) }
+            );
+        } else {
+            // For restoration, push the current completed set minus this task
+            const remaining = [...appState.completedTaskIds].filter(id => id !== taskId);
+            if (remaining.length > 0) {
+                await fetch(
+                    `${CYBERWOLF_RELAY_URL}?action=push&userId=${userId}&taskIds=${encodeURIComponent(remaining.join(','))}`,
+                    { signal: AbortSignal.timeout(5000) }
+                );
+            } else {
+                // No completions left — push empty list to clear server side
+                await fetch(
+                    `${CYBERWOLF_RELAY_URL}?action=push&userId=${userId}&taskIds=`,
+                    { signal: AbortSignal.timeout(5000) }
+                );
+            }
+        }
     } catch (e) {
         console.warn('[CyberWolf] Relay notification failed:', e.message);
         // Silent fail — UX must not be disrupted
@@ -1105,9 +1108,9 @@ function triggerAGI() {
 // ============================================================
 
 /**
- * Full-sync workflow:
- *   1. PUSH  — POST every locally-completed task to the Apps Script relay
- *   2. PULL  — GET remote state from relay
+ * Full-sync workflow (GET-only protocol):
+ *   1. PUSH  — GET /?action=push&userId=X&taskIds=id1,id2,... (no CORS preflight)
+ *   2. PULL  — GET /?action=state&userId=X  (read remote state)
  *   3. MERGE — union remote + local → appState.completedTaskIds
  *   4. PERSIST — write merged set back to localStorage
  *   5. REFRESH — re-render affected cards in-place
@@ -1123,43 +1126,45 @@ async function doSync() {
     btn.innerHTML = '<span class="btn-spinner" style="display:inline-block"></span> SYNCING…';
 
     const userId = 'sophia';
-    const deviceId = getDeviceId();
 
-    // ── STEP 1: PUSH local completions ───────────────────────
+    // ── STEP 1: PUSH local completions via single GET ────────
     const allVisibleCards = [
         ...document.querySelectorAll('#panel-today .task-card[data-id]'),
         ...document.querySelectorAll('.backlog-content .task-card[data-id]'),
         ...document.querySelectorAll('.agenda-task-card[data-id]')
     ];
 
+    const completedIds = [...appState.completedTaskIds].filter(id => {
+        // Only push IDs that are actually visible as completed in current view
+        return appState.completedTaskIds.has(id);
+    });
+
     let pushed = 0;
-    const pushPromises = [];
+    let pushError = null;
 
-    for (const card of allVisibleCards) {
-        if (!appState.completedTaskIds.has(card.dataset.id)) continue;
-
-        pushPromises.push(
-            fetch(CYBERWOLF_RELAY_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: userId,
-                    deviceId: deviceId,
-                    taskId: card.dataset.id,
-                    taskLabel: card.querySelector('.task-title')?.textContent || card.querySelector('.agenda-task-title')?.textContent || card.dataset.id,
-                    completed: true
-                })
-            }).then(r => {
-                if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                pushed++;
-            }).catch(e => {
-                console.warn('[CyberWolf] Push failed:', card.dataset.id, e.message);
-            })
-        );
+    if (completedIds.length > 0) {
+        try {
+            const idsParam = encodeURIComponent(completedIds.join(','));
+            const pushUrl = `${CYBERWOLF_RELAY_URL}?action=push&userId=${userId}&taskIds=${idsParam}`;
+            const resp = await fetch(pushUrl, { signal: AbortSignal.timeout(8000) });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            pushed = completedIds.length;
+            console.info(`[CyberWolf] Pushed ${pushed} completion(s) via GET`);
+        } catch (e) {
+            pushError = e.message;
+            console.warn('[CyberWolf] Push failed:', e.message);
+        }
+    } else {
+        // No local completions to push — still send empty list to clear stale server state
+        try {
+            const pushUrl = `${CYBERWOLF_RELAY_URL}?action=push&userId=${userId}&taskIds=`;
+            const resp = await fetch(pushUrl, { signal: AbortSignal.timeout(8000) });
+            if (!resp.ok) console.warn('[CyberWolf] Empty push failed:', resp.status);
+            pushed = 0;
+        } catch (e) {
+            pushError = e.message;
+        }
     }
-
-    // Fire all pushes concurrently
-    await Promise.all(pushPromises);
 
     // ── STEP 2: PULL remote state ────────────────────────────
     let pulled = 0;
@@ -1167,7 +1172,7 @@ async function doSync() {
     let pullError = null;
 
     try {
-        const resp = await fetch(`${CYBERWOLF_RELAY_URL}/state?userId=${userId}`, {
+        const resp = await fetch(`${CYBERWOLF_RELAY_URL}?action=state&userId=${userId}`, {
             signal: AbortSignal.timeout(8000)
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
