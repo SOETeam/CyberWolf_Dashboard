@@ -3,6 +3,38 @@
    All data embedded | localStorage persistent
    ============================================ */
 
+// ===== ACCESS GATE =====
+const AUTH_CODE = 'SOETECH'; // Authorization code for command center access
+(function initGate() {
+    try {
+        if (localStorage.getItem('cyberwolf_auth') === 'true') {
+            document.getElementById('access-gate').style.display = 'none';
+            document.getElementById('dashboard-container').style.display = 'block';
+        }
+    } catch(e) { /* storage unavailable, gate stays up */ }
+})();
+
+function verifyAccess() {
+    const input = document.getElementById('auth-input');
+    if (!input) return;
+    const val = input.value.toUpperCase().trim();
+    if (val === AUTH_CODE) {
+        try { localStorage.setItem('cyberwolf_auth', 'true'); } catch(e) {}
+        document.getElementById('access-gate').style.display = 'none';
+        document.getElementById('dashboard-container').style.display = 'block';
+    } else {
+        const errEl = document.getElementById('gate-error');
+        if (errEl) { errEl.classList.add('visible'); }
+        input.value = '';
+        setTimeout(function() {
+            if (errEl) errEl.classList.remove('visible');
+        }, 2000);
+    }
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') verifyAccess();
+});
+
 // ===== EMBEDDED DATA SOURCE =====
 const MASTER_TASKS = [
   {"id":"SCH-001","vector":"schedule","title":"Recovery Day — Mandatory Sacred Silence (Aug 4)","priority":"p0","status":"active","details":"Zero external emissions. No emails, no transmissions, no inbound requests outside biological emergency. Deep-system maintenance.","due":"2026-08-04"},

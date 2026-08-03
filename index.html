@@ -8,6 +8,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600&family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- ACCESS GATE OVERLAY -->
+    <div id="access-gate" class="access-gate">
+        <div class="gate-inner">
+            <h2>CYBERWOLF // ACCESS REQUIRED</h2>
+            <p>Enter your authorization code to access the command center.</p>
+            <input type="password" id="auth-input" placeholder="AUTH_CODE" autocomplete="off">
+            <button id="auth-btn" onclick="verifyAccess()">ENGAGE</button>
+            <p id="gate-error" class="gate-error hidden">ACCESS DENIED</p>
+        </div>
+    </div>
+    <div id="dashboard-container" style="display:none;">
     <div class="scanlines"></div>
     <div id="agi-overlay" class="agi-mode-overlay hidden">
         <div class="agi-content">
@@ -183,5 +194,6 @@
     </footer>
 
     <script src="dashboard.js"></script>
+    </div>
 </body>
 </html>
