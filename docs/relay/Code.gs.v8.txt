@@ -1,0 +1,299 @@
+/**
+ * CyberWolf Dashboard — Google Sheets Bridge Relay (v8)
+ * 
+ * Server-side Apps Script middleware between browser dashboard
+ * and Google Sheets. Handles JSON parsing, task sync.
+ * 
+ * v8 FIXES: Aligned with dashboard.js client protocol expectations.
+ *   ROUTING (Fix #1): Accept BOTH ?action=state&userId=X AND /state?userId=X
+ *     - Client sends GET ${RELAY_URL}/state?userId=sophia
+ *     - Apps Script strips "/state" path; e.queryString = "userId=sophia"
+ *     - parseParams now inspects e.requestUri for path segments (/state, /heartbeat)
+ *     - Falls back to query param matching (backward compat)
+ *   RESPONSE SCHEMA (Fix #2): GET /state returns { completedTaskIds: [taskId, ...] }
+ *     - Client expects Array.isArray(remote.completedTaskIds) truthy (line ~240)
+ *     - getUserState still returns full task objects internally
+ *     - doGet wraps state responses to extract completed ids only
+ *   POST MAPPING (Fix #3): Flexible event/field detection
+ *     - Client sends event: "task_completed" OR "task_restored"
+ *     - No "completed" boolean field — must derive from event name
+ *     - Also handles body.taskCompleted boolean variant
+ * 
+ * DEPLOYMENT:
+ * 1. Open your Google Sheet "CyberWolf-Sync"
+ * 2. Extensions > Apps Script
+ * 3. DELETE ALL existing code
+ * 4. Paste this entire code block
+ * 5. File > Save (project name: CyberWolf-Sync-Relay)
+ * 6. Deploy > New deployment > Select type: Web app
+ *    - Execute as: Me
+ *    - Who has access: Anyone
+ * 7. Click Deploy → authorize permissions
+ * 8. Copy the new Web App URL
+ * 9. Send URL back to CIPHER for dashboard.js update
+ */
+
+// ─── Constants ──────────────────────────────────────────────
+var SHEET_NAME = 'Sync';
+var SYNC_COLUMNS = ['userId', 'deviceId', 'taskId', 'taskLabel', 'completed', 'completedBy', 'timestamp', 'version'];
+
+// ─── Entry Points ──────────────────────────────────────────
+
+/** GET endpoint: fetch task state or heartbeat.
+ *  Accepts BOTH formats:
+ *    ?action=state&userId=X          (explicit param — legacy)
+ *    ${RELAY_URL}/state?userId=X     (path-based — dashboard.js default)
+ */
+function doGet(e) {
+  var p = parseParams(e);
+  try {
+    if (p.action === 'state' || p._pathAction === 'state') {
+      return jsonResp(getUserStateResponse(p.userId));
+    } else if (p.action === 'heartbeat' || p._pathAction === 'heartbeat') {
+      return jsonResp({ status: 'ok', rows: getRowCount() });
+    }
+    return jsonResp({ error: 'unknown action' });
+  } catch (err) {
+    return jsonResp({ error: 'doGet failed', message: err.toString() });
+  }
+}
+
+/** POST endpoint: submit task completion/restoration.
+ *  Accepts flexible payload shapes from dashboard.js:
+ *    - body.event === 'task_completed' | 'task_restored'
+ *    - body.taskCompleted === true|false
+ *    - body.completed === true|false
+ *    - Any combination (most specific wins)
+ */
+function doPost(e) {
+  try {
+    var body = JSON.parse(e.postData.getDataAsString());
+    if (!body.userId || !body.deviceId || !body.taskId) {
+      return jsonResp({ error: 'missing fields', required: ['userId','deviceId','taskId'] });
+    }
+    
+    // Resolve 'completed' from multiple possible field names (priority order):
+    //   1. body.completed             (explicit boolean, e.g. v7-compatible)
+    //   2. body.taskCompleted         (dashboard.js may send this)
+    //   3. body.event === 'task_completed'  (derived from event name)
+    //   4. body.event === 'task_restored'   => completed = false
+    //   5. Default: false (no info available)
+    var completed = false;
+    if (body.completed !== undefined) {
+      completed = body.completed === true || body.completed == 'TRUE' || body.completed == 'True';
+    } else if (body.taskCompleted !== undefined) {
+      completed = body.taskCompleted === true || body.taskCompleted == 'TRUE' || body.taskCompleted == 'True';
+    } else if (body.event) {
+      completed = (body.event === 'task_completed'); // task_restored => false
+    }
+    
+    // Build normalized event object for processSync
+    var syncEvent = {
+      userId: body.userId,
+      deviceId: body.deviceId,
+      taskId: body.taskId,
+      taskLabel: body.taskTitle || body.taskLabel || body.taskId,
+      completed: completed
+    };
+    
+    var result = processSync(syncEvent);
+    return jsonResp({ ok: true, taskId: body.taskId, version: result.version });
+  } catch (err) {
+    return jsonResp({ error: 'doPost failed', message: err.toString() });
+  }
+}
+
+// ─── Core Logic ────────────────────────────────────────────
+
+/** Get latest task state per taskId for a userId (upsert-based LWW) */
+function getUserState(userId) {
+  var sheet = getOrCreateSheet();
+  var data = sheet.getDataRange().getValues();
+  var taskMap = {};
+  
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var rUserId = String(row[0] || '');
+    var rTaskId = String(row[2] || '');
+    var rVersion = Number(row[7] || 0);
+    
+    if (rUserId !== userId) continue;
+    if (!taskMap[rTaskId] || rVersion > taskMap[rTaskId].version) {
+      taskMap[rTaskId] = {
+        id: rTaskId,
+        label: String(row[3] || rTaskId),
+        completed: row[4] === true || row[4] == 'TRUE' || row[4] == 'True',
+        timestamp: formatTS(row[6]),
+        version: rVersion
+      };
+    }
+  }
+  
+  var tasks = [];
+  for (var key in taskMap) tasks.push(taskMap[key]);
+  tasks.sort(function(a, b) { return b.timestamp.localeCompare(a.timestamp); });
+  
+  return { userId: userId, tasks: tasks, count: tasks.length };
+}
+
+/** Transform getUserState output into client-expected shape.
+ *  Returns { completedTaskIds: [id1, id2, ...], lastUpdated, lastDevice }
+ *  Clients expect Array.isArray(response.completedTaskIds) to be truthy.
+ */
+function getUserStateResponse(userId) {
+  var fullState = getUserState(userId);
+  var completedIds = [];
+  var lastUpdated = null;
+  var lastDevice = 'unknown';
+  
+  for (var i = 0; i < fullState.tasks.length; i++) {
+    var t = fullState.tasks[i];
+    if (t.completed) {
+      completedIds.push(t.id);
+    }
+    // Track most recent task across all for timestamp/device
+    if (lastUpdated === null || t.timestamp > lastUpdated) {
+      lastUpdated = t.timestamp;
+      lastDevice = t.deviceId || 'unknown';
+    }
+  }
+  
+  // Also pull last row's device from sheet if no tasks
+  if (completedIds.length === 0) {
+    var sheet = getOrCreateSheet();
+    var data = sheet.getDataRange().getValues();
+    for (var j = data.length - 1; j >= 1; j--) {
+      if (String(data[j][0]) === userId) {
+        lastDevice = String(data[j][1] || 'unknown');
+        break;
+      }
+    }
+  }
+  
+  return {
+    completedTaskIds: completedIds,
+    lastUpdated: lastUpdated,
+    lastDevice: lastDevice
+  };
+}
+
+/** Upsert: update existing row or append new row for this userId+taskId */
+function processSync(event) {
+  var sheet = getOrCreateSheet();
+  var data = sheet.getDataRange().getValues();
+  var existingRow = -1;
+  var maxVer = 0;
+  
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === event.userId && String(data[i][2]) === event.taskId) {
+      var v = Number(data[i][7] || 0);
+      if (v >= maxVer) { maxVer = v; existingRow = i + 1; } // 1-indexed
+    }
+  }
+  
+  var newRow = [
+    event.userId,
+    event.deviceId,
+    event.taskId,
+    event.taskLabel || event.taskId,
+    event.completed ? true : false,
+    event.deviceId,
+    new Date(),
+    maxVer + 1
+  ];
+  
+  if (existingRow > 0) {
+    sheet.getRange(existingRow, 1, 1, newRow.length).setValues([newRow]);
+  } else {
+    sheet.appendRow(newRow);
+  }
+  
+  return { version: maxVer + 1, updated: existingRow > 0 };
+}
+
+// ─── Helpers ───────────────────────────────────────────────
+
+function getOrCreateSheet() {
+  var ss;
+  var id = PropertiesService.getScriptProperties().getProperty('sheetId');
+  if (id) {
+    ss = SpreadsheetApp.openById(id);
+  } else {
+    ss = SpreadsheetApp.create('CyberWolf-Sync');
+    PropertiesService.getScriptProperties().setProperty('sheetId', ss.getId());
+  }
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+    sheet.appendRow(SYNC_COLUMNS);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function getRowCount() {
+  return getOrCreateSheet().getDataRange().getNumRows() - 1;
+}
+
+/** Parse params from both query string AND request URI path.
+ *  Supports:
+ *    ?action=state&userId=X          (legacy explicit param)
+ *    ${RELAY_URL}/state?userId=X     (path-based — dashboard.js format)
+ *    ${RELAY_URL}/heartbeat          (path-based heartbeat)
+ */
+function parseParams(e) {
+  var params = {};
+  
+  // 1. Parse standard query parameters (?key=val&key2=val2)
+  if (e.queryString) {
+    e.queryString.split('&').forEach(function(pair) {
+      var kv = pair.split('=');
+      params[kv[0]] = decodeURIComponent(kv[1] || '');
+    });
+  }
+  
+  // 2. Inspect request URI for path-based routing.
+  //    e.requestUri looks like:
+  //      https://script.google.com/macros/s/ABCDEF/exec/state?userId=sophia
+  //      https://script.google.com/macros/s/ABCDEF/exec/heartbeat
+  //    We extract the first path segment after "/exec/" to detect actions.
+  var uri = e.requestUri || '';
+  var execIdx = uri.indexOf('/exec/');
+  if (execIdx !== -1) {
+    var afterExec = uri.substring(execIdx + 6); // strip "/exec/"
+    var pathSegment = afterExec.split('?')[0].split('/')[0]; // take first segment, ignore further paths
+    if (pathSegment === 'state' || pathSegment === 'heartbeat') {
+      params._pathAction = pathSegment;
+    }
+  }
+  
+  return params;
+}
+
+function formatTS(ts) {
+  try {
+    if (ts instanceof Date) return ts.toISOString();
+    return String(ts);
+  } catch(e) { return String(ts); }
+}
+
+/**
+ * jsonResp — Build a proper JSON response for Apps Script ContentService.
+ * 
+ * CRITICAL: Apps Script ContentService.TextOutput only supports:
+ *   - createTextOutput(string)    ← creates output with body content
+ *   - setMimeType(mimeType)       ← sets Content-Type header
+ * 
+ * DOES NOT SUPPORT (will throw TypeError at runtime):
+ *   - .setHeader(key, value)      ← does not exist in Apps Script
+ *   - .getHeaders()               ← does not exist in Apps Script
+ *   - .setStatus(code)            ← does not exist in Apps Script
+ * 
+ * Apps Script Web App framework handles CORS automatically via OPTIONS preflight.
+ * HTTP status is always 200 — errors are communicated via JSON body structure.
+ */
+function jsonResp(obj) {
+  var output = ContentService.createTextOutput(JSON.stringify(obj));
+  output.setMimeType(ContentService.MimeType.JSON);
+  return output;
+}
