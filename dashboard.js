@@ -6,11 +6,12 @@
 
 // ===== WEBHOOK NOTIFICATION CONFIG =====
 // CyberWolf Dashboard → Hermes Agent task completion bridge
-// Architecture: Cloudflare Worker Relay + GH Action Dispatch (ARCHON Spec v1.0, Aug 3, 2026)
+// Architecture: Google Sheets Bridge + Apps Script Serverless Relay (ORACLE Research, Aug 3, 2026)
 // ===== WEBHOOK INTEGRATION =====
-const CYBERWOLF_RELAY_URL = 'https://cyberwolf-relay.YOUR_ACCOUNT.workers.dev';
-// ^ Cloudflare Worker relay — public HTTPS endpoint for cross-device sync
-// Deployed URL: replace YOUR_ACCOUNT with your Cloudflare account subdomain
+const CYBERWOLF_RELAY_URL = 'https://script.google.com/macros/s/[DEPLOYMENT_ID]/exec';
+// ^ Google Apps Script Web App URL — deploy via Extensions > Apps Script
+// Deploy as Web App: Execute as Me, Access "Anyone" → saves URL
+// Code.gs and appsscript.json available at /tmp/sheets_bridge/
 // Fallback: if network unavailable, local-only mode activates automatically
 // ===== ACCESS GATE =====
 const AUTH_CODE = 'SOETECH';
