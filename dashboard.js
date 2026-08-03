@@ -280,26 +280,25 @@ function saveCompletions() {
 }
 
 // ===== RELAY NOTIFICATION FUNCTION =====
-// Routes through Cloudflare relay worker → KV storage + GH Action dispatch.
-// Designed for silent failure — never blocks UX. Falls back gracefully.
-async function notifyHermes(taskId, wasCompleted) {
+// Replaces notifyHermes() for cross-device sync.
+// Sends task completion/restoration through Cloudflare Worker relay.
+async function notifyRelay(taskId, wasCompleted) {
     try {
         const task = ALL_TASKS.find(t => t.id === taskId);
         if (!task) {
-            console.warn('[CyberWolf] Webhook: unknown taskId', taskId);
+            console.warn('[CyberWolf] Relay: unknown taskId', taskId);
             return;
         }
 
-        // Calculate totals once per call
         const allCount = ALL_TASKS.length;
         const remaining = allCount - appState.completedTaskIds.size;
+        const userId = 'sophia'; // TODO: configurable per-user in future
 
-        // Route through Cloudflare relay (public endpoint, no localhost)
         await fetch(`${CYBERWOLF_RELAY_URL}/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                userId: 'sophia',
+                userId: userId,
                 deviceId: getDeviceId(),
                 event: wasCompleted ? 'task_restored' : 'task_completed',
                 taskId: taskId,
@@ -308,25 +307,27 @@ async function notifyHermes(taskId, wasCompleted) {
                 taskPriority: task.priority,
                 remainingCompleted: remaining,
                 totalTasks: allCount,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             }),
-            // Don't wait for response — fire-and-forget with signal timeout
-            signal: AbortSignal.timeout(5000)
+            signal: AbortSignal.timeout(5000),
         });
     } catch (e) {
-        // Silent fail — network errors MUST NOT disrupt dashboard UX
         console.warn('[CyberWolf] Relay notification failed:', e.message);
+        // Silent fail — UX must not be disrupted
     }
 }
 
 // ===== INITIALIZATION =====
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     applyTheme();
     renderAll();
     startClock();
     startCountdown();
     setupEventListeners();
     updateSyncIndicator();
+    // Merge remote completion state before final render
+    await loadRemoteState();
+    renderAll();
 });
 
 // ===== THEME APPLICATION =====
