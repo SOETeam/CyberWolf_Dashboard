@@ -239,7 +239,9 @@ function applyTheme() {
 }
 
 // ===== VIEW SWITCHING =====
+// Wrapped with logging & forced reflow for desktop debugging
 function switchView(viewName) {
+    console.log('[CyberWolf] View switch triggered:', viewName);
     appState.currentView = viewName;
 
     // Toggle panel visibility
@@ -264,6 +266,13 @@ function switchView(viewName) {
         renderAgenda();
     }
     renderFilters(); // Always update filter counts
+
+    // Force layout recalculation on all panels after rendering
+    try {
+        document.querySelectorAll('.view-panel').forEach(function(panel) {
+            void panel.offsetHeight; // forces reflow
+        });
+    } catch(e) {}
 }
 
 // Collapsible backlog toggle
@@ -333,6 +342,9 @@ function renderToday() {
 
     // Render unfinished backlog section
     renderBacklog();
+
+    // Force layout recalculation after rendering
+    try { void document.getElementById('panel-today').offsetHeight; } catch(e) {}
 }
 
 // ---- AGENDA VIEW (P0/P1 only, grouped by vector) ----
@@ -399,6 +411,9 @@ function renderAgenda() {
             <span class="pri-badge p1">P1 × ${totalP1}</span>
         `;
     }
+
+    // Force layout recalculation after rendering
+    try { void document.getElementById('panel-agenda').offsetHeight; } catch(e) {}
 }
 
 // ---- BACKLOG SECTION ----
@@ -424,6 +439,9 @@ function renderBacklog() {
             groupEl.style.display = levelTasks.length > 0 ? 'block' : 'none';
         }
     });
+
+    // Force layout recalculation after rendering
+    try { void document.getElementById('panel-today').offsetHeight; } catch(e) {}
 }
 
 // ---- FINANCE PANEL (shared) ----
@@ -686,6 +704,16 @@ function sortTasksByPriority(tasks) {
 
 // ===== EVENT LISTENERS =====
 function setupEventListeners() {
+    // Fallback: ensure view toggle buttons work on all screens (not just inline onclick)
+    document.getElementById('btn-today')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        switchView('today');
+    });
+    document.getElementById('btn-agenda')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        switchView('agenda');
+    });
+
     // Filter buttons (if present)
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {

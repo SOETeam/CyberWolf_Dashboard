@@ -76,7 +76,7 @@ body {
         0deg, transparent, transparent 2px,
         rgba(0, 0, 0, 0.08) 2px, rgba(0, 0, 0, 0.08) 4px
     );
-    pointer-events: none; z-index: 9999;
+    pointer-events: none; z-index: 9997;
 }
 
 /* ===== HEADER ===== */
@@ -173,8 +173,22 @@ body {
 }
 
 /* ===== VIEW PANELS ===== */
-.view-panel { display: none; }
-.view-panel.active { display: block; }
+.view-panel {
+    display: none;
+    flex: 1;
+    min-height: 0;
+}
+.view-panel.active {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    /* Ensure panel content renders ABOVE overlapping shared widgets on wide screens */
+    position: relative;
+    z-index: 1;
+}
+.view-panel > section {
+    flex-shrink: 0;
+}
 
 /* Shared widgets (visible in both views) */
 .shared-widget {
@@ -221,11 +235,31 @@ body {
 
 /* ===== MAIN GRID ===== */
 .dashboard-grid {
-    flex: 1; display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 15px; padding: 15px 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px 20px;
     overflow-y: auto;
     max-height: calc(100vh - 200px);
+}
+
+.view-panel {
+    display: none;
+    flex-direction: column;
+    gap: 15px;
+    flex: 1;
+    min-height: 0;
+}
+.view-panel.active {
+    display: flex;
+    /* Ensure panel content renders ABOVE overlapping shared widgets */
+    position: relative;
+    z-index: 1;
+}
+
+.view-panel > section {
+    flex-shrink: 0;
 }
 
 .widget {
@@ -840,7 +874,7 @@ body {
     .cyber-header { flex-direction: column; gap: 8px; padding: 10px; }
     .header-right { flex-wrap: wrap; justify-content: center; }
     .dashboard-grid {
-        grid-template-columns: 1fr;
+        /* Already flex-column above — keep consistent on mobile too */
         padding: 10px;
         max-height: none;
     }
