@@ -1201,7 +1201,16 @@ async function doSync() {
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
         const data = await resp.json();
-        remoteCompletedIds = Array.isArray(data.completedTaskIds) ? data.completedTaskIds : [];
+        // ---- Format detection & merge ----
+        // Relay v9+:    { userId, tasks: [{id,label,completed:true,...}], count }
+        // Legacy/API:   { completedTaskIds: [...], lastUpdated, lastDevice }
+        if (data && Array.isArray(data.tasks)) {
+            // Extract completed task IDs from task list (relay v9+)
+            remoteCompletedIds = data.tasks.filter(t => t.completed === true).map(t => t.id);
+        } else if (data && Array.isArray(data.completedTaskIds)) {
+            // Fallback: direct completed-task-id array (legacy / expected format)
+            remoteCompletedIds = data.completedTaskIds;
+        }
     } catch (e) {
         pullError = e.message;
         console.warn('[CyberWolf] Pull failed:', e.message);
