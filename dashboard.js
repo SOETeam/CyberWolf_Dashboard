@@ -118,6 +118,7 @@ const VECTOR_NAMES = {
 // ===== STATE MANAGEMENT =====
 let appState = {
     completedTaskIds: new Set(),
+    agentEvents: [],
     currentFilter: 'all',
     currentDirective: 0,
     currentView: 'today', // 'today' or 'agenda'
@@ -290,8 +291,72 @@ async function loadRemoteState() {
     }
 }
 
-// Combined task list for reference
-const ALL_TASKS = [...TODAY_TASKS, ...BACKLOG_TASKS];
+// ===== PHASE 1 CORE TASK DATA FLOW =====
+// Keep the embedded records as the source of truth. The pure browser core
+// deduplicates by ID/version and derives Today without contacting the relay.
+const CORE = window.CyberWolfCore;
+if (!CORE) throw new Error('[CyberWolf] Phase 1 core failed to load');
+const PRIORITY_ESCALATION = window.CyberWolfPriorityEscalation;
+const TODAY_SOURCE_TASKS = TODAY_TASKS.map(task => ({ ...task, sourceView: 'today' }));
+const EMBEDDED_ALL_TASKS = CORE.dedupeTasksById([...TODAY_SOURCE_TASKS, ...BACKLOG_TASKS]);
+const EMBEDDED_TODAY_VIEW_TASKS = CORE.computeTodayTasks([...TODAY_SOURCE_TASKS, ...BACKLOG_TASKS], new Date());
+let ALL_TASKS = EMBEDDED_ALL_TASKS;
+let TODAY_VIEW_TASKS = EMBEDDED_TODAY_VIEW_TASKS;
+const BACKLOG_VIEW_TASKS = CORE.dedupeTasksById(BACKLOG_TASKS);
+
+function getEscalatedDisplayTask(task) {
+    if (!task || typeof task !== 'object') return null;
+    if (task.id == null || String(task.id).trim() === '') return null;
+    if (!PRIORITY_ESCALATION) return { ...task, basePriority: task.priority, urgency: 'normal' };
+    const completed = appState.completedTaskIds.has(task.id);
+    const source = completed ? { ...task, completed: true } : task;
+    try {
+        return PRIORITY_ESCALATION.escalatePriority(source, new Date().toISOString().slice(0, 10));
+    } catch (error) {
+        console.warn('[CyberWolf] Priority escalation unavailable; using base task:', error.message);
+        return { ...task, basePriority: task.priority, urgency: 'normal' };
+    }
+}
+
+// Optional local refresh artifact. It is same-origin and never replaces local
+// completion state or the relay sync path. Any failure leaves embedded data intact.
+const REFRESH_ARTIFACT_PATH = 'output/cyberwolf_daily_refresh.json';
+async function loadRefreshArtifact() {
+    try {
+        const response = await fetch(REFRESH_ARTIFACT_PATH, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const artifact = CORE.parseRefreshArtifact(await response.json());
+        if (!artifact) throw new Error('invalid or unsafe artifact');
+        const merged = CORE.mergeRefreshArtifact(EMBEDDED_ALL_TASKS, artifact, EMBEDDED_TODAY_VIEW_TASKS);
+        ALL_TASKS = merged.allTasks;
+        TODAY_VIEW_TASKS = merged.todayTasks;
+        console.info(`[CyberWolf] Loaded local refresh artifact: ${artifact.tasks.length} task(s)`);
+        return true;
+    } catch (error) {
+        console.warn('[CyberWolf] Local refresh artifact unavailable; using embedded tasks:', error.message);
+        return false;
+    }
+}
+
+// Optional local Phase 5 event source. It never touches completion state,
+// relay URLs, or external delivery; malformed/missing data is an empty view.
+const AGENT_EVENTS_PATH = 'output/agent_events.json';
+async function loadAgentEvents() {
+    const api = typeof CyberWolfAgentCommunication !== 'undefined' ? CyberWolfAgentCommunication : null;
+    if (!api) return false;
+    try {
+        const response = await fetch(AGENT_EVENTS_PATH, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        const events = Array.isArray(payload) ? payload : (payload && payload.events);
+        appState.agentEvents = api.sortAgentEvents(events);
+        return true;
+    } catch (error) {
+        appState.agentEvents = [];
+        console.warn('[CyberWolf] Local agent events unavailable; showing empty state:', error.message);
+        return false;
+    }
+}
 
 // Save helper
 function saveCompletions() {
@@ -347,6 +412,9 @@ async function notifyRelay(taskId, wasCompleted) {
 // ===== INITIALIZATION =====
 document.addEventListener('DOMContentLoaded', async () => {
     applyTheme();
+    // Optional local data source loads before the first render; failures are soft.
+    await loadRefreshArtifact();
+    await loadAgentEvents();
     renderAll();
     startClock();
     startCountdown();
@@ -427,19 +495,80 @@ function toggleBacklog() {
 
 function renderAll() {
     renderToday();
+    renderGamification();
     renderFilters();
     renderPrioritySummary();
     renderFinancePanel();
     renderCronHealth();
+    renderAgentComms();
     renderDirectives();
     updateTaskCounts();
+}
+
+function renderAgentComms() {
+    const container = document.getElementById('agent-comms-list');
+    const api = typeof CyberWolfAgentCommunication !== 'undefined' ? CyberWolfAgentCommunication : null;
+    if (!container || !api) return;
+    container.textContent = '';
+    if (!appState.agentEvents.length) {
+        const empty = document.createElement('p');
+        empty.className = 'agent-comms-empty';
+        empty.textContent = 'No local agent events available.';
+        container.appendChild(empty);
+        return;
+    }
+    appState.agentEvents.forEach(event => {
+        const item = document.createElement('div');
+        item.className = 'agent-comms-item';
+        item.textContent = api.renderAgentEventText(event);
+        container.appendChild(item);
+    });
+}
+
+// ---- GAMIFICATION (display-only; completion and relay state stay unchanged) ----
+function readCompletionHistory() {
+    try {
+        const raw = localStorage.getItem('cyberwolf_completion_history');
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(entry => entry && typeof entry === 'object' ? entry.date : entry);
+    } catch (error) {
+        return [];
+    }
+}
+
+function renderGamification() {
+    const api = typeof CyberWolfGamification !== 'undefined' ? CyberWolfGamification : null;
+    if (!api) return;
+    try {
+        const daily = api.calculateProgress(TODAY_VIEW_TASKS, appState.completedTaskIds);
+        const campaign = api.calculateProgress(ALL_TASKS, appState.completedTaskIds);
+        const streak = api.calculateStreak(readCompletionHistory(), new Date());
+        const badges = api.awardBadges({ progress: daily, streak, completedCount: daily.completed });
+        const progressLabel = document.getElementById('gamification-progress-label');
+        const progressBar = document.getElementById('gamification-progress-bar');
+        const campaignLabel = document.getElementById('gamification-campaign-label');
+        const streakValue = document.getElementById('gamification-streak-value');
+        const badgesEl = document.getElementById('gamification-badges');
+        if (progressLabel) progressLabel.textContent = `${daily.completed}/${daily.total} COMPLETE — ${daily.percent}%`;
+        if (progressBar) progressBar.style.width = `${daily.percent}%`;
+        if (campaignLabel) campaignLabel.textContent = `CAMPAIGN: ${api.campaignProgress(campaign.completed, campaign.total)}%`;
+        if (streakValue) streakValue.textContent = String(streak);
+        if (badgesEl) badgesEl.innerHTML = badges.length
+            ? badges.map(badge => `<span class="gamification-badge" data-badge-id="${badge.id}">◆ ${badge.label}</span>`).join('')
+            : '<span class="gamification-empty">NO BADGES YET — COMPLETE AN OBJECTIVE</span>';
+    } catch (error) {
+        // Gamification is optional display telemetry; never interrupt the dashboard.
+        console.warn('[CyberWolf] Gamification display unavailable:', error.message);
+    }
 }
 
 // ---- TODAY VIEW ----
 function renderToday() {
     // Sort tasks chronologically by time_block label
     const prioOrder = { p0: 0, p1: 1, p2: 2, p3: 3 };
-    const sortedTasks = sortTasksByTimeBlock(TODAY_TASKS);
+    const sortedTasks = sortTasksByTimeBlock(TODAY_VIEW_TASKS.map(getEscalatedDisplayTask).filter(Boolean));
 
     let hasVisibleTasks = false;
     const levels = ['p0', 'p1', 'p2', 'p3'];
@@ -485,7 +614,7 @@ function renderToday() {
 // ---- AGENDA VIEW (P0/P1 only, grouped by vector) ----
 function renderAgenda() {
     // Filter to P0 and P1 only
-    const filteredTasks = ALL_TASKS.filter(t => t.priority === 'p0' || t.priority === 'p1');
+    const filteredTasks = ALL_TASKS.map(getEscalatedDisplayTask).filter(t => t && (t.priority === 'p0' || t.priority === 'p1'));
 
     // Group by vector
     const vectors = {};
@@ -554,7 +683,7 @@ function renderAgenda() {
 // ---- BACKLOG SECTION ----
 function renderBacklog() {
     const prioOrder = { p0: 0, p1: 1, p2: 2, p3: 3 };
-    const sorted = sortTasksByPriority(BACKLOG_TASKS);
+    const sorted = sortTasksByPriority(BACKLOG_VIEW_TASKS.map(getEscalatedDisplayTask).filter(Boolean));
 
     ['p0', 'p1', 'p2', 'p3'].forEach(level => {
         const gridEl = document.getElementById(`grid-${level}-backlog`);
@@ -683,7 +812,7 @@ function renderFilters() {
     // Since we removed the old filter bar in favor of views, still keep filter button
     // logic if any remain. The filter bar persists in the DOM from original layout.
     const vectors = ['all', 'schedule', 'finance', 'health', 'tech', 'revenue', 'wellness', 'system'];
-    const allTasksForFilters = appState.currentView === 'today' ? TODAY_TASKS : ALL_TASKS;
+    const allTasksForFilters = appState.currentView === 'today' ? TODAY_VIEW_TASKS : ALL_TASKS;
 
     const counts = {};
     vectors.forEach(v => {
@@ -705,7 +834,7 @@ function renderPrioritySummary() {
     const summaryEl = document.getElementById('priority-summary');
     if (!summaryEl) return;
 
-    const tasksForSummary = appState.currentView === 'today' ? TODAY_TASKS : ALL_TASKS;
+    const tasksForSummary = appState.currentView === 'today' ? TODAY_VIEW_TASKS : ALL_TASKS;
     const fc = { p0: 0, p1: 0, p2: 0, p3: 0 };
     tasksForSummary.forEach(t => {
         if (appState.completedTaskIds.has(t.id)) return;
@@ -722,7 +851,7 @@ function renderPrioritySummary() {
 
 // ---- TASK COUNT DISPLAY ----
 function updateTaskCounts() {
-    const all = appState.currentView === 'today' ? TODAY_TASKS : ALL_TASKS;
+    const all = appState.currentView === 'today' ? TODAY_VIEW_TASKS : ALL_TASKS;
     const total = all.length;
     const active = total - appState.completedTaskIds.size;
     const activeEl = document.getElementById('active-task-count');
@@ -734,6 +863,7 @@ function updateTaskCounts() {
 // ===== CARD GENERATORS =====
 
 function createTaskCardHTML(task) {
+    task = (task && task.urgency && task.basePriority) ? task : (getEscalatedDisplayTask(task) || task);
     const isCompleted = appState.completedTaskIds.has(task.id);
     const compClass = isCompleted ? ' completed' : '';
     const dotClass = isCompleted ? 'completed' : (task.status === 'flagged' ? 'flagged' : (task.status === 'in_progress' ? 'active' : task.status));
@@ -746,10 +876,13 @@ function createTaskCardHTML(task) {
         displayLabel = task.due === 'daily' ? 'DAILY' : task.due === 'daily monitoring' ? 'DAILY' : task.due === 'ongoing' ? 'ONGOING' : task.due === 'ongoing monitoring' ? 'ONGOING' : task.due === 'recurring' ? 'DAILY' : task.due;
     }
 
-    const vectorName = VECTOR_NAMES[task.vector] || task.vector.toUpperCase();
+    const vectorName = VECTOR_NAMES[task.vector] || String(task.vector || 'unknown').toUpperCase();
+    const statusText = String(task.status || 'active').toUpperCase();
+
+    const health = CORE.healthScore(task, new Date());
 
     return `
-        <div class="task-card ${task.priority}${compClass}" data-id="${task.id}" title="${task.details}">
+        <div class="task-card ${task.priority}${compClass} urgency-${task.urgency || 'normal'}" data-id="${task.id}" data-health-score="${health}" data-urgency="${task.urgency || 'normal'}" data-base-priority="${task.basePriority || task.priority}" title="${task.details}">
             ${task.time_block ? `<span class="time-block-label">${displayLabel}</span>` : ''}
             <div class="task-card-header">
                 <span class="task-id">${task.id}</span>
@@ -757,7 +890,8 @@ function createTaskCardHTML(task) {
             </div>
             <div class="task-title">${task.title}</div>
             <div class="task-meta">
-                <span><span class="task-status-dot ${dotClass}"></span>${task.status.toUpperCase()}</span>
+                <span><span class="task-status-dot ${dotClass}"></span>${statusText}</span>
+                <span class="task-urgency">${(task.urgency || 'normal').toUpperCase()}</span>
                 <span class="task-due">${!task.time_block ? '⏱ ' + displayLabel : ''}</span>
             </div>
         </div>
@@ -765,8 +899,10 @@ function createTaskCardHTML(task) {
 }
 
 function createAgendaTaskCardHTML(task) {
+    task = (task && task.urgency && task.basePriority) ? task : (getEscalatedDisplayTask(task) || task);
     const isCompleted = appState.completedTaskIds.has(task.id);
     const compClass = isCompleted ? ' completed' : '';
+    const health = CORE.healthScore(task, new Date());
 
     let displayDue = '';
     if (task.due) {
@@ -784,19 +920,22 @@ function createAgendaTaskCardHTML(task) {
                      task.due;
     }
 
-    const statusClass = task.status === 'flagged' ? 'flagged' : (task.status === 'in_progress' ? 'active' : task.status);
+    const statusValue = String(task.status || 'active');
+    const statusClass = statusValue === 'flagged' ? 'flagged' : (statusValue === 'in_progress' ? 'active' : statusValue);
+    const statusText = statusValue.toUpperCase();
 
     return `
-        <div class="agenda-task-card ${task.priority}${compClass}" data-id="${task.id}" title="${task.details}">
+        <div class="agenda-task-card ${task.priority}${compClass} urgency-${task.urgency || 'normal'}" data-id="${task.id}" data-health-score="${health}" data-urgency="${task.urgency || 'normal'}" data-base-priority="${task.basePriority || task.priority}" title="${task.details}">
             <div class="agenda-task-top">
                 <span class="agenda-task-id">${task.id}</span>
-                <span class="agenda-task-status ${statusClass}">${task.status.toUpperCase()}</span>
+                <span class="agenda-task-status ${statusClass}">${statusText}</span>
             </div>
             <div class="agenda-task-title">${task.title}</div>
             <div class="agenda-task-detail">${task.details}</div>
             <div class="agenda-task-footer">
                 <span class="agenda-task-due">⏱ ${displayDue}</span>
-                <span class="task-vector-badge">${VECTOR_NAMES[task.vector] || task.vector.toUpperCase()}</span>
+                <span class="task-urgency">${(task.urgency || 'normal').toUpperCase()}</span>
+                <span class="task-vector-badge">${VECTOR_NAMES[task.vector] || String(task.vector || 'unknown').toUpperCase()}</span>
             </div>
         </div>
     `;

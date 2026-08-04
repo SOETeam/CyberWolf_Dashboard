@@ -1,0 +1,720 @@
+{
+  "adapted_task_count": 25,
+  "calendar_event_count": 25,
+  "external_sync": false,
+  "input_source": "/tmp/tmpg0ck1zd2.json",
+  "refresh_date": "2026-08-04",
+  "tasks": [
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T07:30:00-04:00",
+      "event_id": "8jcahssgnaqsviknmg188d8ce4_20260804T110000Z",
+      "id": "8jcahssgnaqsviknmg188d8ce4_20260804T110000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "8jcahssgnaqsviknmg188d8ce4_20260804T110000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=OGpjYWhzc2duYXFzdmlrbm1nMTg4ZDhjZTRfMjAyNjA4MDRUMTEwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T07:00:00-04:00",
+      "time_block": "07:00-07:30",
+      "title": "\ud83d\udc14 Chicken Morning Release"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T07:30:00-04:00",
+      "event_id": "iisuu4qs7ordhcsvelq7mhtrcc_20260804T110000Z",
+      "id": "iisuu4qs7ordhcsvelq7mhtrcc_20260804T110000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "iisuu4qs7ordhcsvelq7mhtrcc_20260804T110000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=aWlzdXU0cXM3b3JkaGNzdmVscTdtaHRyY2NfMjAyNjA4MDRUMTEwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T07:00:00-04:00",
+      "time_block": "07:00-07:30",
+      "title": "\ud83d\udc15 Bruno Morning Release"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T07:45:00-04:00",
+      "event_id": "los5n5ts8c1mu2iaktodbr932s_20260804T111500Z",
+      "id": "los5n5ts8c1mu2iaktodbr932s_20260804T111500Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "los5n5ts8c1mu2iaktodbr932s_20260804T111500Z",
+        "html_link": "https://www.google.com/calendar/event?eid=bG9zNW41dHM4YzFtdTJpYWt0b2RicjkzMnNfMjAyNjA4MDRUMTExNTAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T07:15:00-04:00",
+      "time_block": "07:15-07:45",
+      "title": "\ud83d\udcaa Morning Exercise Activation"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T08:00:00-04:00",
+      "event_id": "4k6r384sh9j6nlsb9h7f96ngkc_20260804T113000Z",
+      "id": "4k6r384sh9j6nlsb9h7f96ngkc_20260804T113000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "4k6r384sh9j6nlsb9h7f96ngkc_20260804T113000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=NGs2cjM4NHNoOWo2bmxzYjloN2Y5Nm5na2NfMjAyNjA4MDRUMTEzMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T07:30:00-04:00",
+      "time_block": "07:30-08:00",
+      "title": "\ud83d\udc3e Animal Care Routine"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T08:30:00-04:00",
+      "event_id": "n76qoaqicerv9sgv5enga9gf0k_20260804T120000Z",
+      "id": "n76qoaqicerv9sgv5enga9gf0k_20260804T120000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "n76qoaqicerv9sgv5enga9gf0k_20260804T120000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=bjc2cW9hcWljZXJ2OXNndjVlbmdhOWdmMGtfMjAyNjA4MDRUMTIwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T08:00:00-04:00",
+      "time_block": "08:00-08:30",
+      "title": "\ud83c\udf73 Breakfast / Self-Care"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T09:05:00-04:00",
+      "event_id": "bpna09sm335t64g75qd7ajgv4k_20260804T130000Z",
+      "id": "bpna09sm335t64g75qd7ajgv4k_20260804T130000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "bpna09sm335t64g75qd7ajgv4k_20260804T130000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=YnBuYTA5c20zMzV0NjRnNzVxZDdhamd2NGtfMjAyNjA4MDRUMTMwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T09:00:00-04:00",
+      "time_block": "09:00-09:05",
+      "title": "\ud83d\udc8a HRT Morning Reminder"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T14:30:00-04:00",
+      "event_id": "b0bv2kujn3gqjjtf0e6n6nji6g",
+      "id": "b0bv2kujn3gqjjtf0e6n6nji6g",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "b0bv2kujn3gqjjtf0e6n6nji6g",
+        "html_link": "https://www.google.com/calendar/event?eid=YjBidjJrdWpuM2dxamp0ZjBlNm42bmppNmcgc29ldGVjaGxsY0Bt",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T09:30:00-04:00",
+      "time_block": "09:30-14:30",
+      "title": "\ud83c\udfe2 Office Work"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T15:00:00-04:00",
+      "event_id": "miq908evrt7vqpsatffjnpb57k_20260804T180000Z",
+      "id": "miq908evrt7vqpsatffjnpb57k_20260804T180000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "miq908evrt7vqpsatffjnpb57k_20260804T180000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=bWlxOTA4ZXZydDd2cXBzYXRmZmpucGI1N2tfMjAyNjA4MDRUMTgwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T14:00:00-04:00",
+      "time_block": "14:00-15:00",
+      "title": "\ud83d\udc15 Extended Bruno Park Session"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T15:30:00-04:00",
+      "event_id": "pub988qp5kh48h6vo4gib1b7uo",
+      "id": "pub988qp5kh48h6vo4gib1b7uo",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "pub988qp5kh48h6vo4gib1b7uo",
+        "html_link": "https://www.google.com/calendar/event?eid=cHViOTg4cXA1a2g0OGg2dm80Z2liMWI3dW8gc29ldGVjaGxsY0Bt",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T15:00:00-04:00",
+      "time_block": "15:00-15:30",
+      "title": "\ud83d\udda8\ufe0f Print SCFS Vassar Gig Docs"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T16:45:00-04:00",
+      "event_id": "t55il1o5nt8dvvi3g8ppu4h7jo",
+      "id": "t55il1o5nt8dvvi3g8ppu4h7jo",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "t55il1o5nt8dvvi3g8ppu4h7jo",
+        "html_link": "https://www.google.com/calendar/event?eid=dDU1aWwxbzVudDhkdnZpM2c4cHB1NGg3am8gc29ldGVjaGxsY0Bt",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T15:45:00-04:00",
+      "time_block": "15:45-16:45",
+      "title": "\ud83c\udf33 Park Time w/ Kids + Maxine"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T17:45:00-04:00",
+      "event_id": "lukh5q7vlp6775h0kuaofvq1d0",
+      "id": "lukh5q7vlp6775h0kuaofvq1d0",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "lukh5q7vlp6775h0kuaofvq1d0",
+        "html_link": "https://www.google.com/calendar/event?eid=bHVraDVxN3ZscDY3NzVoMGt1YW9mdnExZDAgc29ldGVjaGxsY0Bt",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T17:30:00-04:00",
+      "time_block": "17:30-17:45",
+      "title": "\ud83d\udc76 Drop Kids at Sam's Apt"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T21:00:00-04:00",
+      "event_id": "o06g1fg54vrmtp9chabdahhbl8",
+      "id": "o06g1fg54vrmtp9chabdahhbl8",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "o06g1fg54vrmtp9chabdahhbl8",
+        "html_link": "https://www.google.com/calendar/event?eid=bzA2ZzFmZzU0dnJtdHA5Y2hhYmRhaGhibDggc29ldGVjaGxsY0Bt",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T18:00:00-04:00",
+      "time_block": "18:00-21:00",
+      "title": "\ud83d\ude97 Drive Saginaw\u2192Vassar\u2192Flint"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T20:35:00-04:00",
+      "event_id": "52scr75ig5gbj6n7okufjs1m9o_20260805T003000Z",
+      "id": "52scr75ig5gbj6n7okufjs1m9o_20260805T003000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "52scr75ig5gbj6n7okufjs1m9o_20260805T003000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=NTJzY3I3NWlnNWdiajZuN29rdWZqczFtOW9fMjAyNjA4MDVUMDAzMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T20:30:00-04:00",
+      "time_block": "20:30-20:35",
+      "title": "\ud83d\udc76 Kids Location Check"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T21:05:00-04:00",
+      "event_id": "k004t0j08b36snt8sm0p1k09rg_20260805T010000Z",
+      "id": "k004t0j08b36snt8sm0p1k09rg_20260805T010000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "k004t0j08b36snt8sm0p1k09rg_20260805T010000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=azAwNHQwajA4YjM2c250OHNtMHAxazA5cmdfMjAyNjA4MDVUMDEwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T21:00:00-04:00",
+      "time_block": "21:00-21:05",
+      "title": "\ud83d\udc8a HRT Evening Reminder"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-05T12:00:00-04:00",
+      "event_id": "tengs22j6ns88sions4e1jogr0",
+      "id": "tengs22j6ns88sions4e1jogr0",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "tengs22j6ns88sions4e1jogr0",
+        "html_link": "https://www.google.com/calendar/event?eid=dGVuZ3MyMmo2bnM4OHNpb25zNGUxam9ncjAgc29ldGVjaGxsY0Bt",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T21:00:00-04:00",
+      "time_block": "21:00-12:00",
+      "title": "\ud83d\udccd Maxine Stay in Flint (Night)"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T22:15:00-04:00",
+      "event_id": "4g07kne5na2neggaic8mfo58u0_20260805T020000Z",
+      "id": "4g07kne5na2neggaic8mfo58u0_20260805T020000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "4g07kne5na2neggaic8mfo58u0_20260805T020000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=NGcwN2tuZTVuYTJuZWdnYWljOG1mbzU4dTBfMjAyNjA4MDVUMDIwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T22:00:00-04:00",
+      "time_block": "22:00-22:15",
+      "title": "\ud83d\udc15 Evening Potty Walk"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T22:30:00-04:00",
+      "event_id": "t427r2mnb5f65fuac4hjckn320_20260805T021500Z",
+      "id": "t427r2mnb5f65fuac4hjckn320_20260805T021500Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "t427r2mnb5f65fuac4hjckn320_20260805T021500Z",
+        "html_link": "https://www.google.com/calendar/event?eid=dDQyN3IybW5iNWY2NWZ1YWM0aGpja24zMjBfMjAyNjA4MDVUMDIxNTAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T22:15:00-04:00",
+      "time_block": "22:15-22:30",
+      "title": "\ud83d\udc14 Chickens Locked Up"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T22:45:00-04:00",
+      "event_id": "iih9o7s2hvatuh6f39gjl8tff8_20260805T023000Z",
+      "id": "iih9o7s2hvatuh6f39gjl8tff8_20260805T023000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "iih9o7s2hvatuh6f39gjl8tff8_20260805T023000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=aWloOW83czJodmF0dWg2ZjM5Z2psOHRmZjhfMjAyNjA4MDVUMDIzMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T22:30:00-04:00",
+      "time_block": "22:30-22:45",
+      "title": "\ud83e\uddf9 Quick Evening Tidy"
+    },
+    {
+      "due": "2026-08-05",
+      "end": "2026-08-05T07:30:00-04:00",
+      "event_id": "iisuu4qs7ordhcsvelq7mhtrcc_20260805T110000Z",
+      "id": "iisuu4qs7ordhcsvelq7mhtrcc_20260805T110000Z",
+      "local_date": "2026-08-05",
+      "source": {
+        "event_id": "iisuu4qs7ordhcsvelq7mhtrcc_20260805T110000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=aWlzdXU0cXM3b3JkaGNzdmVscTdtaHRyY2NfMjAyNjA4MDVUMTEwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-05T07:00:00-04:00",
+      "time_block": "07:00-07:30",
+      "title": "\ud83d\udc15 Bruno Morning Release"
+    },
+    {
+      "due": "2026-08-05",
+      "end": "2026-08-05T07:45:00-04:00",
+      "event_id": "los5n5ts8c1mu2iaktodbr932s_20260805T111500Z",
+      "id": "los5n5ts8c1mu2iaktodbr932s_20260805T111500Z",
+      "local_date": "2026-08-05",
+      "source": {
+        "event_id": "los5n5ts8c1mu2iaktodbr932s_20260805T111500Z",
+        "html_link": "https://www.google.com/calendar/event?eid=bG9zNW41dHM4YzFtdTJpYWt0b2RicjkzMnNfMjAyNjA4MDVUMTExNTAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-05T07:15:00-04:00",
+      "time_block": "07:15-07:45",
+      "title": "\ud83d\udcaa Morning Exercise Activation"
+    },
+    {
+      "due": "2026-08-05",
+      "end": "2026-08-05T08:00:00-04:00",
+      "event_id": "4k6r384sh9j6nlsb9h7f96ngkc_20260805T113000Z",
+      "id": "4k6r384sh9j6nlsb9h7f96ngkc_20260805T113000Z",
+      "local_date": "2026-08-05",
+      "source": {
+        "event_id": "4k6r384sh9j6nlsb9h7f96ngkc_20260805T113000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=NGs2cjM4NHNoOWo2bmxzYjloN2Y5Nm5na2NfMjAyNjA4MDVUMTEzMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-05T07:30:00-04:00",
+      "time_block": "07:30-08:00",
+      "title": "\ud83d\udc3e Animal Care Routine"
+    },
+    {
+      "due": "2026-08-05",
+      "end": "2026-08-05T08:30:00-04:00",
+      "event_id": "n76qoaqicerv9sgv5enga9gf0k_20260805T120000Z",
+      "id": "n76qoaqicerv9sgv5enga9gf0k_20260805T120000Z",
+      "local_date": "2026-08-05",
+      "source": {
+        "event_id": "n76qoaqicerv9sgv5enga9gf0k_20260805T120000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=bjc2cW9hcWljZXJ2OXNndjVlbmdhOWdmMGtfMjAyNjA4MDVUMTIwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-05T08:00:00-04:00",
+      "time_block": "08:00-08:30",
+      "title": "\ud83c\udf73 Breakfast / Self-Care"
+    },
+    {
+      "due": "2026-08-05",
+      "end": "2026-08-05T10:30:00-04:00",
+      "event_id": "nf4fealgfj304ci5q8d32s24n0",
+      "id": "nf4fealgfj304ci5q8d32s24n0",
+      "local_date": "2026-08-05",
+      "source": {
+        "event_id": "nf4fealgfj304ci5q8d32s24n0",
+        "html_link": "https://www.google.com/calendar/event?eid=bmY0ZmVhbGdmajMwNGNpNXE4ZDMyczI0bjAgc29ldGVjaGxsY0Bt",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-05T08:30:00-04:00",
+      "time_block": "08:30-10:30",
+      "title": "\ud83d\ude9a Morning Delivery Route (Outbound)"
+    },
+    {
+      "due": "2026-08-05",
+      "end": "2026-08-05T09:05:00-04:00",
+      "event_id": "bpna09sm335t64g75qd7ajgv4k_20260805T130000Z",
+      "id": "bpna09sm335t64g75qd7ajgv4k_20260805T130000Z",
+      "local_date": "2026-08-05",
+      "source": {
+        "event_id": "bpna09sm335t64g75qd7ajgv4k_20260805T130000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=YnBuYTA5c20zMzV0NjRnNzVxZDdhamd2NGtfMjAyNjA4MDVUMTMwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-05T09:00:00-04:00",
+      "time_block": "09:00-09:05",
+      "title": "\ud83d\udc8a HRT Morning Reminder"
+    },
+    {
+      "due": "2026-08-05",
+      "end": "2026-08-05T11:30:00-04:00",
+      "event_id": "ea6u1vm3ak4kjq00n28gq2vgj0",
+      "id": "ea6u1vm3ak4kjq00n28gq2vgj0",
+      "local_date": "2026-08-05",
+      "source": {
+        "event_id": "ea6u1vm3ak4kjq00n28gq2vgj0",
+        "html_link": "https://www.google.com/calendar/event?eid=ZWE2dTF2bTNhazRranEwMG4yOGdxMnZnajAgc29ldGVjaGxsY0Bt",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-05T10:30:00-04:00",
+      "time_block": "10:30-11:30",
+      "title": "\ud83e\udd1d Pick Up Maxine from Flint"
+    }
+  ],
+  "timezone": "America/Detroit",
+  "today_tasks": [
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T07:30:00-04:00",
+      "event_id": "8jcahssgnaqsviknmg188d8ce4_20260804T110000Z",
+      "health_score": 80,
+      "id": "8jcahssgnaqsviknmg188d8ce4_20260804T110000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "8jcahssgnaqsviknmg188d8ce4_20260804T110000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=OGpjYWhzc2duYXFzdmlrbm1nMTg4ZDhjZTRfMjAyNjA4MDRUMTEwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T07:00:00-04:00",
+      "time_block": "07:00-07:30",
+      "title": "\ud83d\udc14 Chicken Morning Release"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T07:30:00-04:00",
+      "event_id": "iisuu4qs7ordhcsvelq7mhtrcc_20260804T110000Z",
+      "health_score": 80,
+      "id": "iisuu4qs7ordhcsvelq7mhtrcc_20260804T110000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "iisuu4qs7ordhcsvelq7mhtrcc_20260804T110000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=aWlzdXU0cXM3b3JkaGNzdmVscTdtaHRyY2NfMjAyNjA4MDRUMTEwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T07:00:00-04:00",
+      "time_block": "07:00-07:30",
+      "title": "\ud83d\udc15 Bruno Morning Release"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T07:45:00-04:00",
+      "event_id": "los5n5ts8c1mu2iaktodbr932s_20260804T111500Z",
+      "health_score": 80,
+      "id": "los5n5ts8c1mu2iaktodbr932s_20260804T111500Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "los5n5ts8c1mu2iaktodbr932s_20260804T111500Z",
+        "html_link": "https://www.google.com/calendar/event?eid=bG9zNW41dHM4YzFtdTJpYWt0b2RicjkzMnNfMjAyNjA4MDRUMTExNTAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T07:15:00-04:00",
+      "time_block": "07:15-07:45",
+      "title": "\ud83d\udcaa Morning Exercise Activation"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T08:00:00-04:00",
+      "event_id": "4k6r384sh9j6nlsb9h7f96ngkc_20260804T113000Z",
+      "health_score": 80,
+      "id": "4k6r384sh9j6nlsb9h7f96ngkc_20260804T113000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "4k6r384sh9j6nlsb9h7f96ngkc_20260804T113000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=NGs2cjM4NHNoOWo2bmxzYjloN2Y5Nm5na2NfMjAyNjA4MDRUMTEzMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T07:30:00-04:00",
+      "time_block": "07:30-08:00",
+      "title": "\ud83d\udc3e Animal Care Routine"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T08:30:00-04:00",
+      "event_id": "n76qoaqicerv9sgv5enga9gf0k_20260804T120000Z",
+      "health_score": 80,
+      "id": "n76qoaqicerv9sgv5enga9gf0k_20260804T120000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "n76qoaqicerv9sgv5enga9gf0k_20260804T120000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=bjc2cW9hcWljZXJ2OXNndjVlbmdhOWdmMGtfMjAyNjA4MDRUMTIwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T08:00:00-04:00",
+      "time_block": "08:00-08:30",
+      "title": "\ud83c\udf73 Breakfast / Self-Care"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T09:05:00-04:00",
+      "event_id": "bpna09sm335t64g75qd7ajgv4k_20260804T130000Z",
+      "health_score": 80,
+      "id": "bpna09sm335t64g75qd7ajgv4k_20260804T130000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "bpna09sm335t64g75qd7ajgv4k_20260804T130000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=YnBuYTA5c20zMzV0NjRnNzVxZDdhamd2NGtfMjAyNjA4MDRUMTMwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T09:00:00-04:00",
+      "time_block": "09:00-09:05",
+      "title": "\ud83d\udc8a HRT Morning Reminder"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T14:30:00-04:00",
+      "event_id": "b0bv2kujn3gqjjtf0e6n6nji6g",
+      "health_score": 80,
+      "id": "b0bv2kujn3gqjjtf0e6n6nji6g",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "b0bv2kujn3gqjjtf0e6n6nji6g",
+        "html_link": "https://www.google.com/calendar/event?eid=YjBidjJrdWpuM2dxamp0ZjBlNm42bmppNmcgc29ldGVjaGxsY0Bt",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T09:30:00-04:00",
+      "time_block": "09:30-14:30",
+      "title": "\ud83c\udfe2 Office Work"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T15:00:00-04:00",
+      "event_id": "miq908evrt7vqpsatffjnpb57k_20260804T180000Z",
+      "health_score": 80,
+      "id": "miq908evrt7vqpsatffjnpb57k_20260804T180000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "miq908evrt7vqpsatffjnpb57k_20260804T180000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=bWlxOTA4ZXZydDd2cXBzYXRmZmpucGI1N2tfMjAyNjA4MDRUMTgwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T14:00:00-04:00",
+      "time_block": "14:00-15:00",
+      "title": "\ud83d\udc15 Extended Bruno Park Session"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T15:30:00-04:00",
+      "event_id": "pub988qp5kh48h6vo4gib1b7uo",
+      "health_score": 80,
+      "id": "pub988qp5kh48h6vo4gib1b7uo",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "pub988qp5kh48h6vo4gib1b7uo",
+        "html_link": "https://www.google.com/calendar/event?eid=cHViOTg4cXA1a2g0OGg2dm80Z2liMWI3dW8gc29ldGVjaGxsY0Bt",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T15:00:00-04:00",
+      "time_block": "15:00-15:30",
+      "title": "\ud83d\udda8\ufe0f Print SCFS Vassar Gig Docs"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T16:45:00-04:00",
+      "event_id": "t55il1o5nt8dvvi3g8ppu4h7jo",
+      "health_score": 80,
+      "id": "t55il1o5nt8dvvi3g8ppu4h7jo",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "t55il1o5nt8dvvi3g8ppu4h7jo",
+        "html_link": "https://www.google.com/calendar/event?eid=dDU1aWwxbzVudDhkdnZpM2c4cHB1NGg3am8gc29ldGVjaGxsY0Bt",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T15:45:00-04:00",
+      "time_block": "15:45-16:45",
+      "title": "\ud83c\udf33 Park Time w/ Kids + Maxine"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T17:45:00-04:00",
+      "event_id": "lukh5q7vlp6775h0kuaofvq1d0",
+      "health_score": 80,
+      "id": "lukh5q7vlp6775h0kuaofvq1d0",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "lukh5q7vlp6775h0kuaofvq1d0",
+        "html_link": "https://www.google.com/calendar/event?eid=bHVraDVxN3ZscDY3NzVoMGt1YW9mdnExZDAgc29ldGVjaGxsY0Bt",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T17:30:00-04:00",
+      "time_block": "17:30-17:45",
+      "title": "\ud83d\udc76 Drop Kids at Sam's Apt"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T21:00:00-04:00",
+      "event_id": "o06g1fg54vrmtp9chabdahhbl8",
+      "health_score": 80,
+      "id": "o06g1fg54vrmtp9chabdahhbl8",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "o06g1fg54vrmtp9chabdahhbl8",
+        "html_link": "https://www.google.com/calendar/event?eid=bzA2ZzFmZzU0dnJtdHA5Y2hhYmRhaGhibDggc29ldGVjaGxsY0Bt",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T18:00:00-04:00",
+      "time_block": "18:00-21:00",
+      "title": "\ud83d\ude97 Drive Saginaw\u2192Vassar\u2192Flint"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T20:35:00-04:00",
+      "event_id": "52scr75ig5gbj6n7okufjs1m9o_20260805T003000Z",
+      "health_score": 80,
+      "id": "52scr75ig5gbj6n7okufjs1m9o_20260805T003000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "52scr75ig5gbj6n7okufjs1m9o_20260805T003000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=NTJzY3I3NWlnNWdiajZuN29rdWZqczFtOW9fMjAyNjA4MDVUMDAzMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T20:30:00-04:00",
+      "time_block": "20:30-20:35",
+      "title": "\ud83d\udc76 Kids Location Check"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T21:05:00-04:00",
+      "event_id": "k004t0j08b36snt8sm0p1k09rg_20260805T010000Z",
+      "health_score": 80,
+      "id": "k004t0j08b36snt8sm0p1k09rg_20260805T010000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "k004t0j08b36snt8sm0p1k09rg_20260805T010000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=azAwNHQwajA4YjM2c250OHNtMHAxazA5cmdfMjAyNjA4MDVUMDEwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T21:00:00-04:00",
+      "time_block": "21:00-21:05",
+      "title": "\ud83d\udc8a HRT Evening Reminder"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-05T12:00:00-04:00",
+      "event_id": "tengs22j6ns88sions4e1jogr0",
+      "health_score": 80,
+      "id": "tengs22j6ns88sions4e1jogr0",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "tengs22j6ns88sions4e1jogr0",
+        "html_link": "https://www.google.com/calendar/event?eid=dGVuZ3MyMmo2bnM4OHNpb25zNGUxam9ncjAgc29ldGVjaGxsY0Bt",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T21:00:00-04:00",
+      "time_block": "21:00-12:00",
+      "title": "\ud83d\udccd Maxine Stay in Flint (Night)"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T22:15:00-04:00",
+      "event_id": "4g07kne5na2neggaic8mfo58u0_20260805T020000Z",
+      "health_score": 80,
+      "id": "4g07kne5na2neggaic8mfo58u0_20260805T020000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "4g07kne5na2neggaic8mfo58u0_20260805T020000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=NGcwN2tuZTVuYTJuZWdnYWljOG1mbzU4dTBfMjAyNjA4MDVUMDIwMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T22:00:00-04:00",
+      "time_block": "22:00-22:15",
+      "title": "\ud83d\udc15 Evening Potty Walk"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T22:30:00-04:00",
+      "event_id": "t427r2mnb5f65fuac4hjckn320_20260805T021500Z",
+      "health_score": 80,
+      "id": "t427r2mnb5f65fuac4hjckn320_20260805T021500Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "t427r2mnb5f65fuac4hjckn320_20260805T021500Z",
+        "html_link": "https://www.google.com/calendar/event?eid=dDQyN3IybW5iNWY2NWZ1YWM0aGpja24zMjBfMjAyNjA4MDVUMDIxNTAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T22:15:00-04:00",
+      "time_block": "22:15-22:30",
+      "title": "\ud83d\udc14 Chickens Locked Up"
+    },
+    {
+      "due": "2026-08-04",
+      "end": "2026-08-04T22:45:00-04:00",
+      "event_id": "iih9o7s2hvatuh6f39gjl8tff8_20260805T023000Z",
+      "health_score": 80,
+      "id": "iih9o7s2hvatuh6f39gjl8tff8_20260805T023000Z",
+      "local_date": "2026-08-04",
+      "source": {
+        "event_id": "iih9o7s2hvatuh6f39gjl8tff8_20260805T023000Z",
+        "html_link": "https://www.google.com/calendar/event?eid=aWloOW83czJodmF0dWg2ZjM5Z2psOHRmZjhfMjAyNjA4MDVUMDIzMDAwWiBzb2V0ZWNobGxjQG0",
+        "status": "confirmed",
+        "type": "google_calendar"
+      },
+      "start": "2026-08-04T22:30:00-04:00",
+      "time_block": "22:30-22:45",
+      "title": "\ud83e\uddf9 Quick Evening Tidy"
+    }
+  ],
+  "workflow": "cyberwolf_daily_refresh",
+  "workflow_time": "01:00"
+}

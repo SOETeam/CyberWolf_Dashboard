@@ -80,6 +80,19 @@
                 <div id="countdown-sublabel" class="countdown-sublabel">MANDATORY SACRED SILENCE</div>
             </section>
 
+            <section class="widget gamification-widget full-width" id="gamification-section">
+                <div class="gamification-summary">
+                    <div>
+                        <h3 class="widget-title">◉ MISSION PROGRESS</h3>
+                        <div id="gamification-progress-label" class="gamification-progress-label">0% COMPLETE</div>
+                        <div class="gamification-progress-track"><div id="gamification-progress-bar" class="gamification-progress-bar"></div></div>
+                        <div id="gamification-campaign-label" class="gamification-campaign-label">CAMPAIGN: 0%</div>
+                    </div>
+                    <div class="gamification-streak" aria-live="polite"><span id="gamification-streak-value">0</span><small>DAY STREAK</small></div>
+                </div>
+                <div id="gamification-badges" class="gamification-badges" aria-live="polite"></div>
+            </section>
+
             <!-- DAILY TASK PANEL -->
             <section class="widget tasks-widget full-width" id="tasks-section">
                 <h3 class="widget-title">◉ MISSION OBJECTIVES — TODAY</h3>
@@ -228,6 +241,14 @@
             <div class="cron-grid" id="cron-grid"></div>
         </section>
 
+        <section class="widget agent-comms-widget full-width shared-widget" id="agent-comms-section">
+            <h3 class="widget-title">◉ AGENT COMMS / HANDOFFS</h3>
+            <p class="agent-comms-note">LOCAL EVENT VIEW ONLY // DISCORD + VOICE DELIVERY UNIMPLEMENTED</p>
+            <div id="agent-comms-list" class="agent-comms-list" aria-live="polite">
+                <p class="agent-comms-empty">No local agent events available.</p>
+            </div>
+        </section>
+
         <section class="widget directives-widget shared-widget">
             <h3 class="widget-title">◉ CORE DIRECTIVES</h3>
             <p id="directive-text" class="directives-text">"LOVE UNDER WILL."</p>
@@ -272,6 +293,10 @@
     <!-- TOAST NOTIFICATION CONTAINER -->
     <div id="toast-container"></div>
 
+    <script src="dashboard_core.js"></script>
+    <script src="gamification.js"></script>
+    <script src="priority_escalation.js"></script>
+    <script src="agent_communication.js"></script>
     <script src="dashboard.js"></script>
     </div>
 </body>

@@ -54,6 +54,20 @@
 .gate-error.visible { opacity: 1; animation: shake 0.3s ease-in-out; }
 .hidden { display: none !important; }
 
+/* ===== GAMIFICATION ===== */
+.gamification-widget { border-color: rgba(176, 38, 255, 0.35); }
+.gamification-summary { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: center; }
+.gamification-progress-label { color: var(--neon-cyan); font-size: 0.75rem; margin: 8px 0 6px; }
+.gamification-progress-track { height: 8px; background: rgba(0, 240, 255, 0.12); border: 1px solid rgba(0, 240, 255, 0.3); }
+.gamification-progress-bar { height: 100%; width: 0; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); box-shadow: 0 0 8px var(--neon-cyan); transition: width 0.25s ease; }
+.gamification-campaign-label { color: var(--text-dim); font-size: 0.6rem; margin-top: 6px; }
+.gamification-streak { color: var(--neon-purple); font-family: 'Orbitron', sans-serif; font-size: 1.5rem; text-align: center; text-shadow: 0 0 10px rgba(176, 38, 255, 0.5); }
+.gamification-streak small { display: block; color: var(--text-dim); font: 0.55rem 'Fira Code', monospace; margin-top: 3px; }
+.gamification-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.gamification-badge { border: 1px solid rgba(176, 38, 255, 0.55); color: var(--neon-purple); padding: 5px 8px; font-size: 0.58rem; background: rgba(176, 38, 255, 0.08); }
+.gamification-empty { color: var(--text-dim); font-size: 0.58rem; }
+@media (max-width: 600px) { .gamification-summary { grid-template-columns: 1fr; } .gamification-streak { text-align: left; } }
+
 @keyframes shake {
     0%, 100% { transform: translateX(0); }
     25% { transform: translateX(-5px); }
@@ -404,6 +418,10 @@ body {
 }
 
 .task-due { color: var(--neon-cyan); }
+.task-urgency { color: var(--text-dim); font-size: 0.55rem; letter-spacing: 0.5px; }
+.urgency-critical .task-urgency { color: var(--p0-red); font-weight: 700; }
+.urgency-urgent .task-urgency { color: var(--p1-orange); font-weight: 700; }
+.urgency-watch .task-urgency { color: var(--p2-yellow); }
 .task-status-dot {
     width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 3px;
 }
@@ -765,6 +783,17 @@ body {
 .cron-item.status-ok { color: var(--green); }
 .cron-item.status-fail { color: var(--red); }
 .cron-item.status-pending { color: var(--p2-yellow); }
+
+/* ===== AGENT COMMUNICATION / HANDOFFS ===== */
+.agent-comms-widget { border-color: rgba(0, 240, 255, 0.35); }
+.agent-comms-note { color: var(--text-dim); font-size: 0.58rem; letter-spacing: 0.5px; margin: -4px 0 12px; }
+.agent-comms-list { display: flex; flex-direction: column; gap: 6px; }
+.agent-comms-item, .agent-comms-empty {
+    padding: 8px 10px; border-left: 2px solid var(--neon-cyan);
+    background: rgba(0, 10, 30, 0.4); color: var(--text-main);
+    font-size: 0.65rem; line-height: 1.45; overflow-wrap: anywhere;
+}
+.agent-comms-empty { color: var(--text-dim); border-left-color: var(--text-dim); }
 
 /* ===== CORE DIRECTIVES ===== */
 .directives-text {

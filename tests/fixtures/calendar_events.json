@@ -1,0 +1,22 @@
+[
+  {
+    "id": "evt-timed-1",
+    "summary": "Timezone-aware planning",
+    "start": {"dateTime": "2026-08-05T23:30:00-04:00", "timeZone": "America/New_York"},
+    "end": {"dateTime": "2026-08-06T00:45:00-04:00", "timeZone": "America/New_York"},
+    "calendarId": "work@example.com",
+    "htmlLink": "https://calendar.google.com/event?eid=evt-timed-1",
+    "status": "confirmed"
+  },
+  {
+    "id": "evt-all-day-1",
+    "summary": "Release day",
+    "start": {"date": "2026-08-06"},
+    "end": {"date": "2026-08-07"},
+    "calendarId": "work@example.com"
+  },
+  {
+    "id": "evt-minimal-1",
+    "start": {"dateTime": "2026-08-07T09:00:00Z"}
+  }
+]
