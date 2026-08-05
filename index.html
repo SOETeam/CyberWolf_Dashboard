@@ -49,6 +49,7 @@
     <nav class="view-toggle">
         <button class="toggle-btn active" onclick="switchView('today')" id="btn-today">◈ TODAY</button>
         <button class="toggle-btn" onclick="switchView('agenda')" id="btn-agenda">◈ AGENDA</button>
+        <button class="toggle-btn calendar-btn" id="btn-calendar" type="button">▦ CALENDAR</button>
     </nav>
 
     <!-- SYNC BUTTON BAR -->
@@ -73,12 +74,6 @@
                 <div id="clock-ms" class="ms-display">--</div>
             </section>
 
-            <section class="widget countdown-widget">
-                <h3 class="widget-title">◉ RECOVERY DAY COUNTDOWN</h3>
-                <div id="countdown-value" class="countdown-display">---</div>
-                <div id="countdown-label" class="countdown-label">DAYS UNTIL AUG 4</div>
-                <div id="countdown-sublabel" class="countdown-sublabel">MANDATORY SACRED SILENCE</div>
-            </section>
 
             <section class="widget gamification-widget full-width" id="gamification-section">
                 <div class="gamification-summary">
@@ -173,15 +168,21 @@
         <!-- ========== VIEW 2: AGENDA ========== -->
         <div class="view-panel" id="panel-agenda">
 
-            <!-- AGENDA HEADER WITH FILTER INFO -->
-            <section class="widget agenda-header-widget full-width">
-                <h3 class="widget-title">◉ HIGH PRIORITY TRIAGE — P0 &amp; P1 ACROSS ALL VECTORS</h3>
-                <div class="priority-summary" id="agenda-priority-summary"></div>
-            </section>
-
-            <!-- VECTOR-GROUPED P0/P1 TASKS -->
-            <section class="widget agenda-tasks-widget full-width" id="agenda-tasks">
-                <!-- Dynamically populated by renderAgenda() -->
+            <section class="widget agenda-day-widget full-width">
+                <div class="agenda-day-toolbar">
+                    <button class="agenda-nav-btn" id="agenda-prev-day" type="button" aria-label="Previous day">‹</button>
+                    <div>
+                        <h3 class="widget-title">◉ DAY PLANNER</h3>
+                        <div id="agenda-date-label" class="agenda-date-label"></div>
+                    </div>
+                    <button class="agenda-nav-btn" id="agenda-next-day" type="button" aria-label="Next day">›</button>
+                    <button class="agenda-today-btn" id="agenda-today" type="button">TODAY</button>
+                    <button class="agenda-today-btn" id="agenda-calendar" type="button">MONTH</button>
+                </div>
+                <div id="agenda-source-status" class="agenda-source-status" aria-live="polite"></div>
+                <div id="agenda-day-summary" class="priority-summary"></div>
+                <div id="agenda-all-day" class="agenda-all-day"></div>
+                <div id="agenda-timeline" class="agenda-timeline" aria-label="Agenda timeline"></div>
             </section>
 
             <!-- FULL FINANCE TELEMETRY PANEL -->
@@ -292,6 +293,23 @@
 
     <!-- TOAST NOTIFICATION CONTAINER -->
     <div id="toast-container"></div>
+
+    <div id="calendar-modal" class="calendar-modal hidden" role="dialog" aria-modal="true" aria-labelledby="calendar-title">
+        <div class="calendar-dialog">
+            <div class="calendar-dialog-header">
+                <div><span class="calendar-kicker">LOCAL PLANNER</span><h2 id="calendar-title">CALENDAR</h2></div>
+                <button id="calendar-close" class="calendar-close" type="button" aria-label="Close calendar">×</button>
+            </div>
+            <div class="calendar-month-toolbar">
+                <button id="calendar-prev-month" class="agenda-nav-btn" type="button" aria-label="Previous month">‹</button>
+                <strong id="calendar-month-label"></strong>
+                <button id="calendar-next-month" class="agenda-nav-btn" type="button" aria-label="Next month">›</button>
+            </div>
+            <div class="calendar-weekdays"><span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span></div>
+            <div id="calendar-grid" class="calendar-grid"></div>
+            <div id="calendar-popout" class="calendar-popout hidden"></div>
+        </div>
+    </div>
 
     <script src="dashboard_core.js"></script>
     <script src="gamification.js"></script>

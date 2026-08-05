@@ -36,8 +36,9 @@
             if (!source || source.id == null || String(source.id).trim() === '') return;
             const id = String(source.id).trim();
             const candidate = { ...source, id };
-            const current = selected.get(id);
-            if (!current || version(candidate) > version(current)) selected.set(id, candidate);
+            const identity = source.source_key ? String(source.source_key) : id;
+            const current = selected.get(identity);
+            if (!current || version(candidate) > version(current)) selected.set(identity, candidate);
         });
         return Array.from(selected.values());
     }
@@ -60,6 +61,47 @@
         return Array.from(selected.values());
     }
 
+    function getAgendaTasksForDate(tasks, selectedDate, today) {
+        const target = dayKey(selectedDate);
+        const todayKey = dayKey(today || new Date());
+        if (!target) return [];
+        const recurring = new Set(['daily', 'recurring', 'every day']);
+        return dedupeTasksById((Array.isArray(tasks) ? tasks : []).filter(task => {
+            if (!task || task.id == null) return false;
+            const dueValue = task.due != null ? task.due : (task.date != null ? task.date : task.scheduled_date);
+            const dueText = dueValue == null ? '' : String(dueValue).trim().toLowerCase();
+            return dayKey(dueValue) === target || recurring.has(dueText) ||
+                (task.sourceView === 'today' && target === todayKey);
+        }));
+    }
+
+    function getMonthGrid(value) {
+        const parsed = asDate(value || new Date());
+        if (!parsed) return [];
+        const year = parsed.getUTCFullYear();
+        const month = parsed.getUTCMonth();
+        const first = new Date(Date.UTC(year, month, 1));
+        const start = new Date(Date.UTC(year, month, 1 - first.getUTCDay()));
+        return Array.from({ length: 42 }, (_, index) => {
+            const date = new Date(start.getTime() + index * 86400000);
+            return {
+                date: date.toISOString().slice(0, 10),
+                day: date.getUTCDate(),
+                weekday: date.getUTCDay(),
+                isCurrentMonth: date.getUTCMonth() === month,
+            };
+        });
+    }
+
+    function getCalendarViewState(view, agendaDate, calendarMonth) {
+        const safeView = ['today', 'agenda', 'calendar'].includes(view) ? view : 'today';
+        const safeDate = dayKey(agendaDate) || dayKey(new Date());
+        const safeMonth = /^\d{4}-\d{2}$/.test(String(calendarMonth || ''))
+            ? String(calendarMonth)
+            : safeDate.slice(0, 7);
+        return { view: safeView, agendaDate: safeDate, calendarMonth: safeMonth };
+    }
+
     function normalizeRefreshTask(source, sourceView) {
         if (!source || typeof source !== 'object' || Array.isArray(source)) return null;
         const id = source.id == null ? '' : String(source.id).trim();
@@ -76,6 +118,10 @@
         };
         if (!task.due && task.local_date) task.due = task.local_date;
         if (sourceView) task.sourceView = sourceView;
+        if (!task.source_key) {
+            const sourceType = task.source && task.source.type ? String(task.source.type) : 'local';
+            task.source_key = `${sourceType}:${id}`;
+        }
         return task;
     }
 
@@ -96,6 +142,18 @@
         return {
             tasks: dedupeTasksById(tasks),
             todayTasks: dedupeTasksById(todayTasks),
+            localTasks: Array.isArray(payload.local_tasks)
+                ? payload.local_tasks.map(task => normalizeRefreshTask(task, null)).filter(Boolean)
+                : [],
+            calendarEvents: Array.isArray(payload.calendar_events)
+                ? payload.calendar_events.map(task => normalizeRefreshTask(task, null)).filter(Boolean)
+                : [],
+            sourceStatus: payload.source_status && typeof payload.source_status === 'object'
+                ? { ...payload.source_status } : {},
+            syncStatus: payload.sync_status && typeof payload.sync_status === 'object'
+                ? { ...payload.sync_status } : {},
+            sourceContracts: payload.source_contracts && typeof payload.source_contracts === 'object'
+                ? { ...payload.source_contracts } : {},
         };
     }
 
@@ -132,6 +190,9 @@
     return {
         dedupeTasksById,
         computeTodayTasks,
+        getAgendaTasksForDate,
+        getMonthGrid,
+        getCalendarViewState,
         healthScore,
         parseRefreshArtifact,
         mergeRefreshArtifact,

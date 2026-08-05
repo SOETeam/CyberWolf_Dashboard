@@ -36,7 +36,10 @@ def _parse_datetime(value: str | None) -> datetime | None:
 
 
 def _source(event: Event, event_id: str) -> dict[str, str]:
-    source: dict[str, str] = {"type": "google_calendar", "event_id": event_id}
+    existing = event.get("source")
+    source: dict[str, str] = dict(existing) if isinstance(existing, Mapping) else {}
+    source.setdefault("type", "google_calendar")
+    source.setdefault("event_id", event_id)
     aliases = {
         "calendar_id": ("calendarId", "calendar_id"),
         "html_link": ("htmlLink", "html_link"),
@@ -107,7 +110,81 @@ def adapt_events(events: Iterable[Event]) -> list[dict[str, Any]]:
     return result
 
 
-__all__ = ["adapt_event", "adapt_events"]
+def _local_record(task: Event) -> dict[str, Any] | None:
+    """Normalize a local task without changing its completion semantics."""
+    if not isinstance(task, Mapping):
+        return None
+    task_id = str(task.get("id", task.get("task_id", "")) or "").strip()
+    if not task_id:
+        return None
+    result = dict(task)
+    result["id"] = task_id
+    result.setdefault("title", str(result.get("label", "")))
+    result.setdefault("source", {"type": "local", "task_id": task_id})
+    result.setdefault("source_key", f"local:{task_id}")
+    result.setdefault("completed", result.get("status") in {"completed", "done"})
+    if result.get("local_date") and not result.get("due"):
+        result["due"] = result["local_date"]
+    return result
+
+
+def _future_source_record(record: Event, source_type: str) -> dict[str, Any] | None:
+    """Keep a future Sheet row lossless while giving the UI a stable identity."""
+    if not isinstance(record, Mapping):
+        return None
+    record_id = str(record.get("id", record.get("source_id", "")) or "").strip()
+    if not record_id:
+        # Sheet rows may not have IDs yet; use the source row's stable date/time
+        # only when present, without claiming it is a live-ingested record.
+        date_value = record.get("Date", record.get("date", ""))
+        time_value = record.get("Time", record.get("time", ""))
+        record_id = f"{date_value}:{time_value}".strip(":")
+    if not record_id:
+        return None
+    result = dict(record)
+    result["id"] = record_id
+    result.setdefault("title", str(record.get("Description", record.get("Category", "")) or ""))
+    source = dict(result.get("source") or {})
+    source.setdefault("type", source_type)
+    result["source"] = source
+    result.setdefault("source_key", f"{source_type}:{record_id}")
+    result.setdefault("sync_status", "future_contract_only")
+    return result
+
+
+def combine_normalized_records(
+    local_tasks: Iterable[Event], calendar_events: Iterable[Event],
+    health_records: Iterable[Event] | None = None,
+    finance_records: Iterable[Event] | None = None,
+) -> list[dict[str, Any]]:
+    """Return local tasks and read-only Google events in one stable UI dataset.
+
+    The visible ``id`` remains the original local task ID or Google event ID.
+    ``source_key`` provides a source-qualified identity for joins when two
+    systems happen to use the same ID. No external API or write is performed.
+    """
+    result: list[dict[str, Any]] = []
+    for task in local_tasks or []:
+        normalized = _local_record(task)
+        if normalized is not None:
+            result.append(normalized)
+    for event in adapt_events(calendar_events):
+        event["source_key"] = f"google_calendar:{event['event_id']}"
+        event.setdefault("completed", False)
+        event.setdefault("completion_source", "local")
+        result.append(event)
+    for record in health_records or []:
+        normalized = _future_source_record(record, "health_sheet")
+        if normalized is not None:
+            result.append(normalized)
+    for record in finance_records or []:
+        normalized = _future_source_record(record, "finance_sheet")
+        if normalized is not None:
+            result.append(normalized)
+    return result
+
+
+__all__ = ["adapt_event", "adapt_events", "combine_normalized_records"]
 
 if __name__ == "__main__":
     print("CyberWolf calendar task adapter loaded; no external sync performed.")

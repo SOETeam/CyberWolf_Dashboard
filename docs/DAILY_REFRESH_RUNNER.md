@@ -59,8 +59,11 @@ artifact contents, and reruns the same command to verify deterministic output.
 ## Artifact shape
 
 The artifact includes `workflow`, `workflow_time`, `timezone`, `refresh_date`, input
-counts, `external_sync: false`, adapted `tasks`, and scored `today_tasks`. It is a
-local output file only; writing it is not a claim of external synchronization.
+counts, `external_sync: false`, `local_tasks`, normalized read-only
+`calendar_events`, combined `tasks`, and scored `today_tasks`. Each normalized record
+preserves its original source ID and has a source-qualified `source_key` such as
+`local:task-1` or `google_calendar:event-1`. It is a local output file only; writing
+it is not a claim of external synchronization.
 
 ## Safety boundary
 

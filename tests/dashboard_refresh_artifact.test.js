@@ -40,4 +40,18 @@ assert.deepEqual(merged.allTasks.map(task => task.id), ['same', 'keep', 'added']
 assert.equal(merged.allTasks.find(task => task.id === 'same').title, 'artifact new');
 assert.equal(merged.todayTasks.filter(task => task.id === 'added').length, 1);
 
+const combined = parseRefreshArtifact({
+  external_sync: false,
+  tasks: [
+    { id: 'local-1', title: 'Local task', due: '2026-08-06', source_key: 'local:local-1', completed: true },
+    { id: 'g-1', title: 'Google event', due: '2026-08-06', source_key: 'google_calendar:g-1', source: { type: 'google_calendar', event_id: 'g-1' } },
+  ],
+  local_tasks: [{ id: 'local-1', title: 'Local task', source_key: 'local:local-1', completed: true }],
+  calendar_events: [{ id: 'g-1', title: 'Google event', source_key: 'google_calendar:g-1', source: { type: 'google_calendar', event_id: 'g-1' } }],
+  today_tasks: [],
+});
+assert.equal(combined.tasks.find(task => task.id === 'g-1').source.event_id, 'g-1');
+assert.equal(combined.tasks.find(task => task.id === 'local-1').completed, true);
+assert.equal(combined.calendarEvents[0].source_key, 'google_calendar:g-1');
+
 console.log('dashboard_refresh_artifact.test.js: all assertions passed');

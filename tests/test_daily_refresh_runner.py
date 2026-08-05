@@ -12,6 +12,19 @@ RUNNER = ROOT / "daily_refresh_runner.py"
 
 
 class DailyRefreshRunnerTests(unittest.TestCase):
+    def test_payload_contains_combined_local_and_calendar_views_without_losing_google_identity(self):
+        from daily_refresh_runner import build_refresh_payload
+        payload = build_refresh_payload(
+            [{"id": "g-1", "summary": "Calendar event", "start": {"dateTime": "2026-08-06T09:00:00-04:00"}}],
+            __import__("datetime").date(2026, 8, 6),
+            "fixture",
+            local_tasks=[{"id": "local-1", "title": "Local task", "due": "2026-08-06", "completed": True}],
+        )
+        self.assertEqual([task["id"] for task in payload["tasks"]], ["local-1", "g-1"])
+        self.assertEqual(payload["calendar_events"][0]["source_key"], "google_calendar:g-1")
+        self.assertEqual(payload["local_tasks"][0]["source_key"], "local:local-1")
+        self.assertTrue(payload["tasks"][0]["completed"])
+
     def test_fixture_produces_deterministic_local_artifact(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             output_path = Path(temp_dir) / "refresh.json"

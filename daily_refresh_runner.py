@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from calendar_task_adapter import adapt_events
+from calendar_task_adapter import adapt_events, combine_normalized_records
 from cyberwolf_core_engine import computed_today, health_score
 
 
@@ -60,14 +60,16 @@ def _refresh_date(value: str | None) -> date:
 
 
 def build_refresh_payload(
-    events: list[dict[str, Any]], refresh_date: date, input_source: str
+    events: list[dict[str, Any]], refresh_date: date, input_source: str,
+    local_tasks: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build the stable local refresh document from already-read event mappings."""
     adapted = adapt_events(events)
+    combined = combine_normalized_records(local_tasks or [], events)
     # The adapter's local_date is the calendar-derived date used by the core's
     # computed Today view. Copy records so neither adapter output nor input changes.
     core_tasks = []
-    for task in adapted:
+    for task in combined:
         core_task = deepcopy(task)
         if core_task.get("local_date"):
             core_task["due"] = core_task["local_date"]
@@ -88,8 +90,35 @@ def build_refresh_payload(
         "refresh_date": refresh_date.isoformat(),
         "input_source": input_source,
         "calendar_event_count": len(events),
+        "local_task_count": len(local_tasks or []),
         "adapted_task_count": len(adapted),
+        "combined_item_count": len(combined),
         "external_sync": False,
+        "sync_status": {
+            "mode": "local_only",
+            "google_calendar": "snapshot_loaded" if events else "no_local_snapshot",
+            "health": "not_present_in_local_payload",
+            "finance": "not_present_in_local_payload",
+            "relay": "unverified",
+        },
+        "source_status": {
+            "google_calendar": "available_from_local_snapshot" if events else "not_available_locally",
+            "health": "not_ingested",
+            "finance": "not_ingested",
+        },
+        "source_contracts": {
+            "health": {
+                "sheet_id": "1_gdlJ-ms-hF3nYUY5KGUhdYvs_G1fBIGTFnEKR2dTrQ",
+                "columns": ["Date", "Time", "Category", "Status", "Notes", "Logged By"],
+            },
+            "finance": {
+                "sheet_id": "1F_XnhZq0zZNmvSLGF_VciR19V5sts-RTJay0hAt84CQ",
+                "tab": "Expense Summary",
+                "columns": ["Date", "Time", "Action", "Amount", "Category", "Description", "Balance", "Logged By"],
+            },
+        },
+        "local_tasks": [task for task in combined if task.get("source_key", "").startswith("local:")],
+        "calendar_events": [task for task in combined if task.get("source_key", "").startswith("google_calendar:")],
         "tasks": core_tasks,
         "today_tasks": scored_today,
     }

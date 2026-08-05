@@ -122,6 +122,10 @@ let appState = {
     currentFilter: 'all',
     currentDirective: 0,
     currentView: 'today', // 'today' or 'agenda'
+    agendaDate: new Date().toISOString().slice(0, 10),
+    calendarMonth: new Date().toISOString().slice(0, 7),
+    sourceStatus: {},
+    syncStatus: { mode: 'local_only' },
     config: JSON.parse(localStorage.getItem('cyber_config')) || {
         accentColor: '#00f0ff',
         secondaryColor: '#b026ff',
@@ -330,6 +334,8 @@ async function loadRefreshArtifact() {
         const merged = CORE.mergeRefreshArtifact(EMBEDDED_ALL_TASKS, artifact, EMBEDDED_TODAY_VIEW_TASKS);
         ALL_TASKS = merged.allTasks;
         TODAY_VIEW_TASKS = merged.todayTasks;
+        appState.sourceStatus = artifact.sourceStatus || {};
+        appState.syncStatus = artifact.syncStatus || { mode: 'local_only' };
         console.info(`[CyberWolf] Loaded local refresh artifact: ${artifact.tasks.length} task(s)`);
         return true;
     } catch (error) {
@@ -417,7 +423,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadAgentEvents();
     renderAll();
     startClock();
-    startCountdown();
     setupEventListeners();
     updateSyncIndicator();
     // Merge remote completion state before final render
@@ -445,12 +450,12 @@ function applyTheme() {
 // Wrapped with logging & forced reflow for desktop debugging
 function switchView(viewName) {
     console.log('[CyberWolf] View switch triggered:', viewName);
-    appState.currentView = viewName;
+    appState.currentView = ['today', 'agenda'].includes(viewName) ? viewName : 'today';
 
     // Toggle panel visibility
     const todayPanel = document.getElementById('panel-today');
     const agendaPanel = document.getElementById('panel-agenda');
-    if (viewName === 'today') {
+    if (appState.currentView === 'today') {
         todayPanel.classList.add('active');
         agendaPanel.classList.remove('active');
         document.getElementById('btn-today').classList.add('active');
@@ -463,7 +468,7 @@ function switchView(viewName) {
     }
 
     // Re-render appropriate panels
-    if (viewName === 'today') {
+    if (appState.currentView === 'today') {
         renderToday();
     } else {
         renderAgenda();
@@ -495,6 +500,7 @@ function toggleBacklog() {
 
 function renderAll() {
     renderToday();
+    if (appState.currentView === 'agenda') renderAgenda();
     renderGamification();
     renderFilters();
     renderPrioritySummary();
@@ -611,73 +617,113 @@ function renderToday() {
     try { void document.getElementById('panel-today').offsetHeight; } catch(e) {}
 }
 
-// ---- AGENDA VIEW (P0/P1 only, grouped by vector) ----
+// ---- AGENDA VIEW: single-day planner with visible hours ----
 function renderAgenda() {
-    // Filter to P0 and P1 only
-    const filteredTasks = ALL_TASKS.map(getEscalatedDisplayTask).filter(t => t && (t.priority === 'p0' || t.priority === 'p1'));
-
-    // Group by vector
-    const vectors = {};
-    const vectorOrder = ['health', 'finance', 'revenue', 'tech', 'system', 'schedule', 'wellness', 'gdrive'];
-    filteredTasks.forEach(task => {
-        const vec = task.vector;
-        if (!vectors[vec]) vectors[vec] = [];
-        vectors[vec].push(task);
-    });
-
-    // Build HTML
-    const container = document.getElementById('agenda-tasks');
-    if (!container) return;
-
-    let html = '';
-    let totalP0 = 0, totalP1 = 0;
-
-    vectorOrder.forEach(vecName => {
-        const tasks = vectors[vecName];
-        if (!tasks || tasks.length === 0) return;
-
-        // Count priorities within this vector
-        let vP0 = tasks.filter(t => t.priority === 'p0').length;
-        let vP1 = tasks.filter(t => t.priority === 'p1').length;
-        totalP0 += vP0;
-        totalP1 += vP1;
-
-        const hasP0 = vP0 > 0;
-        const hasP1 = vP1 > 0;
-        const countClass = (hasP0 && !hasP1) ? 'p0-only' : (hasP0 && hasP1) ? 'mixed' : 'mixed';
-        const vecDisplayName = VECTOR_NAMES[vecName] || vecName.toUpperCase();
-
-        html += `<div class="agenda-vector-group">`;
-        html += `<div class="agenda-vector-header">`;
-        html += `<span class="agenda-vector-name">${vecDisplayName}</span>`;
-        html += `<span class="agenda-vector-count ${countClass}">P0:${vP0} P1:${vP1} (${tasks.length})</span>`;
-        html += `</div>`;
-        html += `<div class="agenda-task-grid">`;
-
-        // Sort: P0 first, then P1; within same priority by status order
-        const statusOrder = { flagged: 0, in_progress: 0, active: 1, pending: 2 };
-        tasks.sort((a, b) => {
-            if (a.priority !== b.priority) return a.priority < b.priority ? -1 : 1;
-            return (statusOrder[a.status] || 3) - (statusOrder[b.status] || 3);
-        });
-
-        html += tasks.map(task => createAgendaTaskCardHTML(task)).join('');
-        html += `</div></div>`;
-    });
-
-    container.innerHTML = html;
-
-    // Update agenda priority summary
-    const agendaSummary = document.getElementById('agenda-priority-summary');
-    if (agendaSummary) {
-        agendaSummary.innerHTML = `
-            <span class="pri-badge p0">P0 × ${totalP0}</span>
-            <span class="pri-badge p1">P1 × ${totalP1}</span>
-        `;
+    const container = document.getElementById('agenda-timeline');
+    if (!container || !CORE.getAgendaTasksForDate) return;
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const tasks = CORE.getAgendaTasksForDate(ALL_TASKS, appState.agendaDate, todayKey)
+        .map(getEscalatedDisplayTask).filter(Boolean);
+    const label = document.getElementById('agenda-date-label');
+    if (label) {
+        label.textContent = new Date(`${appState.agendaDate}T12:00:00Z`).toLocaleDateString('en-US', {
+            weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+        }).toUpperCase();
+    }
+    const sourceStatus = document.getElementById('agenda-source-status');
+    if (sourceStatus) {
+        const source = appState.sourceStatus || {};
+        const sync = appState.syncStatus || {};
+        sourceStatus.innerHTML = `<span class="source-status-pill calendar">CALENDAR: ${source.google_calendar || 'embedded/local'}</span><span class="source-status-pill muted">HEALTH: ${source.health || 'not ingested locally'}</span><span class="source-status-pill muted">FINANCE: ${source.finance || 'not ingested locally'}</span><span class="source-status-note">SYNC: ${sync.mode || 'local_only'} · relay ${sync.relay || 'unverified'}</span>`;
+    }
+    const summary = document.getElementById('agenda-day-summary');
+    if (summary) {
+        summary.innerHTML = ['p0', 'p1', 'p2', 'p3'].map(priority =>
+            `<span class="pri-badge ${priority}">${priority.toUpperCase()} × ${tasks.filter(task => task.priority === priority).length}</span>`
+        ).join('');
     }
 
-    // Force layout recalculation after rendering
-    try { void document.getElementById('panel-agenda').offsetHeight; } catch(e) {}
+    const allDay = tasks.filter(task => !getTaskStartTime(task));
+    const allDayEl = document.getElementById('agenda-all-day');
+    if (allDayEl) allDayEl.innerHTML = allDay.length
+        ? `<span class="agenda-all-day-label">ALL DAY</span>${allDay.map(createAgendaTimelineEventHTML).join('')}`
+        : '';
+
+    const byHour = new Map();
+    tasks.filter(getTaskStartTime).forEach(task => {
+        const hour = getTaskStartTime(task).split(':')[0].padStart(2, '0');
+        if (!byHour.has(hour)) byHour.set(hour, []);
+        byHour.get(hour).push(task);
+    });
+    container.innerHTML = Array.from({ length: 24 }, (_, hour) => {
+        const key = String(hour).padStart(2, '0');
+        const events = (byHour.get(key) || []).map(createAgendaTimelineEventHTML).join('');
+        return `<div class="agenda-hour-row"><time>${key}:00</time><div class="agenda-hour-events">${events}</div></div>`;
+    }).join('');
+}
+
+function getTaskStartTime(task) {
+    const match = /^(\d{1,2}:\d{2})/.exec(String(task && task.time_block || ''));
+    return match ? match[1] : null;
+}
+
+function createAgendaTimelineEventHTML(task) {
+    const completed = appState.completedTaskIds.has(task.id);
+    return `<div class="agenda-event ${task.priority}${completed ? ' completed' : ''}" data-id="${task.id}" title="${task.details || ''}">
+        <strong>${task.time_block && /^\d/.test(task.time_block) ? task.time_block : 'ALL DAY'}</strong>
+        <span>${task.title}</span><small>${VECTOR_NAMES[task.vector] || String(task.vector || '').toUpperCase()}</small>
+    </div>`;
+}
+
+function shiftAgendaDate(days) {
+    const date = new Date(`${appState.agendaDate}T12:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + days);
+    appState.agendaDate = date.toISOString().slice(0, 10);
+    if (appState.currentView !== 'agenda') switchView('agenda');
+    else renderAgenda();
+}
+
+function openCalendar() {
+    const modal = document.getElementById('calendar-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    renderCalendar();
+}
+
+function renderCalendar() {
+    const grid = document.getElementById('calendar-grid');
+    if (!grid || !CORE.getMonthGrid) return;
+    const monthDate = `${appState.calendarMonth}-01`;
+    const cells = CORE.getMonthGrid(monthDate);
+    const monthLabel = document.getElementById('calendar-month-label');
+    if (monthLabel) monthLabel.textContent = new Date(`${monthDate}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
+    const todayKey = new Date().toISOString().slice(0, 10);
+    grid.innerHTML = cells.map(cell => {
+        const count = CORE.getAgendaTasksForDate(ALL_TASKS, cell.date, todayKey).length;
+        return `<button class="calendar-day${cell.isCurrentMonth ? '' : ' outside-month'}${cell.date === todayKey ? ' today' : ''}" data-date="${cell.date}" type="button"><span>${cell.day}</span>${count ? `<small>${count} EVENT${count === 1 ? '' : 'S'}</small>` : ''}</button>`;
+    }).join('');
+    grid.querySelectorAll('.calendar-day').forEach(button => button.addEventListener('click', () => showCalendarDay(button.dataset.date)));
+}
+
+function showCalendarDay(dateKey) {
+    const popout = document.getElementById('calendar-popout');
+    if (!popout) return;
+    const tasks = CORE.getAgendaTasksForDate(ALL_TASKS, dateKey, new Date().toISOString().slice(0, 10));
+    const heading = new Date(`${dateKey}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    popout.classList.remove('hidden');
+    popout.innerHTML = `<div><span class="calendar-kicker">DAY SUMMARY</span><h3>${heading}</h3><p>${tasks.length ? `${tasks.length} scheduled event${tasks.length === 1 ? '' : 's'}` : 'No scheduled events'}</p></div><button class="agenda-today-btn" id="calendar-see-more" type="button">SEE MORE →</button>`;
+    document.getElementById('calendar-see-more').addEventListener('click', () => {
+        appState.agendaDate = dateKey;
+        document.getElementById('calendar-modal').classList.add('hidden');
+        switchView('agenda');
+    });
+}
+
+function shiftCalendarMonth(offset) {
+    const date = new Date(`${appState.calendarMonth}-01T12:00:00Z`);
+    date.setUTCMonth(date.getUTCMonth() + offset);
+    appState.calendarMonth = date.toISOString().slice(0, 7);
+    renderCalendar();
 }
 
 // ---- BACKLOG SECTION ----
@@ -1000,16 +1046,13 @@ function setupEventListeners() {
         });
     });
 
-    // Task completion toggle (delegated from tasks-section)
-    document.getElementById('tasks-section').addEventListener('click', (e) => {
-        const card = e.target.closest('.task-card, .agenda-task-card');
+    // Task completion toggle (Today and Agenda use the same stable IDs/state path).
+    function handleTaskCompletion(e) {
+        const card = e.target.closest('.task-card, .agenda-task-card, .agenda-event');
         if (!card) return;
-
         const taskId = card.dataset.id;
         if (!taskId) return;
-
         const wasCompleted = appState.completedTaskIds.has(taskId);
-
         if (wasCompleted) {
             appState.completedTaskIds.delete(taskId);
             flashStatus('RESTORED', '#ffcc00');
@@ -1018,10 +1061,23 @@ function setupEventListeners() {
             flashStatus('COMPLETE ✓', '#00ff88');
         }
         saveCompletions();
-        // Notify relay of task change for cross-device sync (fire-and-forget)
         notifyRelay(taskId, !wasCompleted);
         renderAll();
+    }
+    document.getElementById('tasks-section')?.addEventListener('click', handleTaskCompletion);
+    document.getElementById('agenda-timeline')?.addEventListener('click', handleTaskCompletion);
+
+    document.getElementById('agenda-prev-day')?.addEventListener('click', () => shiftAgendaDate(-1));
+    document.getElementById('agenda-next-day')?.addEventListener('click', () => shiftAgendaDate(1));
+    document.getElementById('agenda-today')?.addEventListener('click', () => {
+        appState.agendaDate = new Date().toISOString().slice(0, 10);
+        renderAgenda();
     });
+    document.getElementById('btn-calendar')?.addEventListener('click', openCalendar);
+    document.getElementById('agenda-calendar')?.addEventListener('click', openCalendar);
+    document.getElementById('calendar-close')?.addEventListener('click', () => document.getElementById('calendar-modal')?.classList.add('hidden'));
+    document.getElementById('calendar-prev-month')?.addEventListener('click', () => shiftCalendarMonth(-1));
+    document.getElementById('calendar-next-month')?.addEventListener('click', () => shiftCalendarMonth(1));
 
     // Directive navigation
     document.getElementById('dir-prev')?.addEventListener('click', () => {
@@ -1093,7 +1149,10 @@ function updateSyncIndicator() {
     const el = document.getElementById('last-sync');
     if (el) {
         const now = new Date();
-        el.textContent = `LAST SYNC: ${now.toLocaleTimeString('en-GB')}`;
+        const mode = (appState.syncStatus && appState.syncStatus.mode) || 'local_only';
+        el.textContent = mode === 'local_only'
+            ? 'SOURCE: LOCAL ARTIFACT // EXTERNAL SYNC UNVERIFIED'
+            : `SYNC: ${now.toLocaleTimeString('en-GB')}`;
     }
 }
 
@@ -1183,52 +1242,6 @@ function startClock() {
 
     tick();
     setInterval(tick, 100);
-}
-
-// ===== RECOVERY DAY COUNTDOWN =====
-function startCountdown() {
-    const recoveryDate = new Date('2026-08-04T00:00:00Z');
-
-    function tick() {
-        const now = new Date();
-        const diff = recoveryDate.getTime() - now.getTime();
-
-        const display = document.getElementById('countdown-value');
-        const label = document.getElementById('countdown-label');
-        const sublabel = document.getElementById('countdown-sublabel');
-
-        if (!display || !label) return;
-
-        if (diff <= 0) {
-            display.textContent = 'NOW';
-            display.className = 'countdown-display countdown-past';
-            label.textContent = 'RECOVERY DAY — ACTIVE';
-            sublabel.textContent = 'SACRED SILENCE IN PROGRESS';
-        } else {
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-            display.textContent = days;
-            display.className = 'countdown-display';
-
-            if (days <= 1) {
-                display.classList.add('countdown-soon');
-                label.textContent = `${hours}H ${mins}M — TOMORROW`;
-            } else if (days <= 7) {
-                display.classList.add('countdown-soon');
-                label.textContent = `T-MINUS ${days} DAYS`;
-            } else {
-                display.classList.add('countdown-far');
-                label.textContent = `T-MINUS ${days} DAYS`;
-            }
-
-            sublabel.textContent = 'MANDATORY SACRED SILENCE // AUG 4';
-        }
-    }
-
-    tick();
-    setInterval(tick, 1000);
 }
 
 // ===== KONAMI CODE EASTER EGG =====
