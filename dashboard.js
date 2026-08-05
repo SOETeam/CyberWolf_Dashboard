@@ -620,7 +620,14 @@ function renderToday() {
 // ---- AGENDA VIEW: single-day planner with visible hours ----
 function renderAgenda() {
     const container = document.getElementById('agenda-timeline');
-    if (!container || !CORE.getAgendaTasksForDate) return;
+    if (!container) {
+        console.error('[CyberWolf] Agenda render skipped: required #agenda-timeline container is missing. Check index.html and asset versions.');
+        return;
+    }
+    if (!CORE.getAgendaTasksForDate) {
+        console.error('[CyberWolf] Agenda render skipped: agenda core helper is unavailable. Check dashboard_core.js asset version.');
+        return;
+    }
     const todayKey = new Date().toISOString().slice(0, 10);
     const tasks = CORE.getAgendaTasksForDate(ALL_TASKS, appState.agendaDate, todayKey)
         .map(getEscalatedDisplayTask).filter(Boolean);
