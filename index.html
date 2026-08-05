@@ -79,9 +79,18 @@
                 <div class="gamification-summary">
                     <div>
                         <h3 class="widget-title">◉ MISSION PROGRESS</h3>
-                        <div id="gamification-progress-label" class="gamification-progress-label">0% COMPLETE</div>
-                        <div class="gamification-progress-track"><div id="gamification-progress-bar" class="gamification-progress-bar"></div></div>
-                        <div id="gamification-campaign-label" class="gamification-campaign-label">CAMPAIGN: 0%</div>
+                        <div class="mission-progress-row"><span>DAILY</span><span id="gamification-progress-label" class="gamification-progress-label">0/0 — 0%</span></div>
+                        <div class="gamification-progress-track"><div id="daily-progress-bar" class="gamification-progress-bar"></div></div>
+                        <div class="mission-progress-row"><span>PROJECT</span><span id="project-progress-label" class="gamification-progress-label">0/0 — 0%</span></div>
+                        <div class="gamification-progress-track"><div id="project-progress-bar" class="gamification-progress-bar project-progress-bar"></div></div>
+                        <div id="gamification-campaign-label" class="gamification-campaign-label">CAMPAIGN: LOCAL ONLY</div>
+                        <form id="mission-create-form" class="mission-create-form">
+                            <input id="mission-title" name="title" required placeholder="MISSION TITLE">
+                            <select id="mission-vector" name="vector"><option>work</option><option>health</option><option>finance</option><option>home</option><option>parenting</option><option>relationship</option><option>agent</option><option>project</option></select>
+                            <select id="mission-classification" name="classification"><option value="daily_time_sensitive">DAILY</option><option value="project_sensitive">PROJECT</option><option value="hybrid">HYBRID</option><option value="unclassified">UNCLASSIFIED</option></select>
+                            <input id="mission-project-id" name="project_id" placeholder="PROJECT ID (OPTIONAL)">
+                            <button type="submit">+ CREATE MISSION</button>
+                        </form>
                     </div>
                     <div class="gamification-streak" aria-live="polite"><span id="gamification-streak-value">0</span><small>DAY STREAK</small></div>
                 </div>
@@ -316,6 +325,8 @@
     <script src="priority_escalation.js?v=3.1.0"></script>
     <script src="agent_communication.js?v=3.1.0"></script>
     <script src="dashboard.js?v=3.1.0"></script>
+    <script src="wolf_companion_core.js?v=3.1.0"></script>
+    <script src="wolf_companion.js?v=3.1.0"></script>
     </div>
 </body>
 </html>

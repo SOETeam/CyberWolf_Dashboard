@@ -295,6 +295,20 @@ async function loadRemoteState() {
     }
 }
 
+// ===== LOCAL MISSION STATE (occurrence-aware, legacy-compatible) =====
+const MISSION_STATE_KEY = 'cyberwolf_mission_state_v1';
+let missionState = { completedOccurrences: [], completions: [], legacyCompletedIds: [] };
+try {
+    const rawMissionState = localStorage.getItem(MISSION_STATE_KEY);
+    if (rawMissionState) missionState = JSON.parse(rawMissionState) || missionState;
+    missionState = CyberWolfGamification.migrateMissionState([...appState.completedTaskIds], missionState, CyberWolfGamification.localDateKey(new Date(), 'America/Detroit'));
+} catch (error) { console.warn('[CyberWolf] Mission state unavailable; using memory only:', error.message); }
+function saveMissionState() {
+    try { localStorage.setItem(MISSION_STATE_KEY, JSON.stringify(missionState)); } catch (error) { console.warn('[CyberWolf] Mission state save failed:', error.message); }
+}
+function missionDate() { return CyberWolfGamification.localDateKey(new Date(), 'America/Detroit'); }
+function normalizeLocalMission(task) { return CyberWolfGamification.normalizeMissionTask(task); }
+
 // ===== PHASE 1 CORE TASK DATA FLOW =====
 // Keep the embedded records as the source of truth. The pure browser core
 // deduplicates by ID/version and derives Today without contacting the relay.
@@ -302,8 +316,9 @@ const CORE = window.CyberWolfCore;
 if (!CORE) throw new Error('[CyberWolf] Phase 1 core failed to load');
 const PRIORITY_ESCALATION = window.CyberWolfPriorityEscalation;
 const TODAY_SOURCE_TASKS = TODAY_TASKS.map(task => ({ ...task, sourceView: 'today' }));
-const EMBEDDED_ALL_TASKS = CORE.dedupeTasksById([...TODAY_SOURCE_TASKS, ...BACKLOG_TASKS]);
-const EMBEDDED_TODAY_VIEW_TASKS = CORE.computeTodayTasks([...TODAY_SOURCE_TASKS, ...BACKLOG_TASKS], new Date());
+const STORED_MISSIONS = Array.isArray(missionState.tasks) ? missionState.tasks.map(normalizeLocalMission).filter(task => task.title) : [];
+const EMBEDDED_ALL_TASKS = CORE.dedupeTasksById([...TODAY_SOURCE_TASKS, ...BACKLOG_TASKS, ...STORED_MISSIONS]);
+const EMBEDDED_TODAY_VIEW_TASKS = CORE.computeTodayTasks([...TODAY_SOURCE_TASKS, ...BACKLOG_TASKS, ...STORED_MISSIONS], new Date());
 let ALL_TASKS = EMBEDDED_ALL_TASKS;
 let TODAY_VIEW_TASKS = EMBEDDED_TODAY_VIEW_TASKS;
 const BACKLOG_VIEW_TASKS = CORE.dedupeTasksById(BACKLOG_TASKS);
@@ -548,18 +563,22 @@ function renderGamification() {
     const api = typeof CyberWolfGamification !== 'undefined' ? CyberWolfGamification : null;
     if (!api) return;
     try {
-        const daily = api.calculateProgress(TODAY_VIEW_TASKS, appState.completedTaskIds);
-        const campaign = api.calculateProgress(ALL_TASKS, appState.completedTaskIds);
+        const daily = api.calculateDailyProgress(ALL_TASKS, missionState, missionDate());
+        const project = api.calculateProjectProgress(ALL_TASKS, missionState, missionDate());
         const streak = api.calculateStreak(readCompletionHistory(), new Date());
         const badges = api.awardBadges({ progress: daily, streak, completedCount: daily.completed });
         const progressLabel = document.getElementById('gamification-progress-label');
-        const progressBar = document.getElementById('gamification-progress-bar');
+        const dailyBar = document.getElementById('daily-progress-bar') || document.getElementById('gamification-progress-bar');
+        const projectLabel = document.getElementById('project-progress-label');
+        const projectBar = document.getElementById('project-progress-bar');
         const campaignLabel = document.getElementById('gamification-campaign-label');
         const streakValue = document.getElementById('gamification-streak-value');
         const badgesEl = document.getElementById('gamification-badges');
         if (progressLabel) progressLabel.textContent = `${daily.completed}/${daily.total} COMPLETE — ${daily.percent}%`;
-        if (progressBar) progressBar.style.width = `${daily.percent}%`;
-        if (campaignLabel) campaignLabel.textContent = `CAMPAIGN: ${api.campaignProgress(campaign.completed, campaign.total)}%`;
+        if (dailyBar) dailyBar.style.width = `${daily.percent}%`;
+        if (projectLabel) projectLabel.textContent = `${project.completed}/${project.total} PROGRESS — ${project.percent}%`;
+        if (projectBar) projectBar.style.width = `${project.percent}%`;
+        if (campaignLabel) campaignLabel.textContent = 'CAMPAIGN: LOCAL ONLY // REMOTE STRUCTURED SYNC DEFERRED';
         if (streakValue) streakValue.textContent = String(streak);
         if (badgesEl) badgesEl.innerHTML = badges.length
             ? badges.map(badge => `<span class="gamification-badge" data-badge-id="${badge.id}">◆ ${badge.label}</span>`).join('')
@@ -1060,7 +1079,25 @@ function setupEventListeners() {
         const taskId = card.dataset.id;
         if (!taskId) return;
         const wasCompleted = appState.completedTaskIds.has(taskId);
-        if (wasCompleted) {
+        const task = ALL_TASKS.find(item => item.id === taskId);
+        const isMission = task && ['daily_time_sensitive', 'project_sensitive', 'hybrid'].includes(task.classification);
+        if (isMission) {
+            const occurrence = CyberWolfGamification.occurrenceKey(task, missionDate());
+            if (wasCompleted) {
+                missionState.completedOccurrences = missionState.completedOccurrences.filter(key => key !== occurrence);
+                missionState.completions = missionState.completions.filter(entry => entry.occurrence !== occurrence);
+                missionState.tasks = Array.isArray(missionState.tasks) ? missionState.tasks.map(item => item.id === taskId ? { ...item, completed: false, project_progress: 0, progress_source: 'manual' } : item) : [];
+                appState.completedTaskIds.delete(taskId);
+                flashStatus('RESTORED', '#ffcc00');
+            } else {
+                const result = CyberWolfGamification.completeMission(task, missionState, missionDate(), 'manual');
+                missionState = result.state;
+                missionState.tasks = Array.isArray(missionState.tasks) ? missionState.tasks.map(item => item.id === taskId ? { ...item, completed: true, project_progress: 1, progress_source: 'manual_override' } : item) : [];
+                appState.completedTaskIds.add(taskId);
+                flashStatus('COMPLETE ✓', '#00ff88');
+            }
+            saveMissionState();
+        } else if (wasCompleted) {
             appState.completedTaskIds.delete(taskId);
             flashStatus('RESTORED', '#ffcc00');
         } else {
@@ -1069,6 +1106,10 @@ function setupEventListeners() {
         }
         saveCompletions();
         notifyRelay(taskId, !wasCompleted);
+        // Companion reward hook: completion-only; the core ledger makes retries idempotent.
+        if (!wasCompleted && window.CyberWolf && typeof window.CyberWolf.rewardTaskCompletion === 'function') {
+            window.CyberWolf.rewardTaskCompletion(taskId, { source: 'dashboard-task-completion' });
+        }
         renderAll();
     }
     document.getElementById('tasks-section')?.addEventListener('click', handleTaskCompletion);
@@ -1085,6 +1126,29 @@ function setupEventListeners() {
     document.getElementById('calendar-close')?.addEventListener('click', () => document.getElementById('calendar-modal')?.classList.add('hidden'));
     document.getElementById('calendar-prev-month')?.addEventListener('click', () => shiftCalendarMonth(-1));
     document.getElementById('calendar-next-month')?.addEventListener('click', () => shiftCalendarMonth(1));
+
+    document.getElementById('mission-create-form')?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const title = document.getElementById('mission-title')?.value.trim();
+        if (!title) return;
+        const task = normalizeLocalMission({
+            id: `mission-${Date.now()}`,
+            title,
+            vector: document.getElementById('mission-vector')?.value || 'work',
+            classification: document.getElementById('mission-classification')?.value || 'unclassified',
+            project_id: document.getElementById('mission-project-id')?.value.trim() || undefined,
+            source: { type: 'local', created_at: new Date().toISOString() },
+            _version: 1,
+        });
+        missionState.tasks = Array.isArray(missionState.tasks) ? missionState.tasks : [];
+        missionState.tasks.push(task);
+        ALL_TASKS = CORE.dedupeTasksById([...ALL_TASKS, task]);
+        TODAY_VIEW_TASKS = CORE.computeTodayTasks(ALL_TASKS, new Date());
+        saveMissionState();
+        event.target.reset();
+        renderAll();
+        flashStatus('MISSION CREATED', '#00f0ff');
+    });
 
     // Directive navigation
     document.getElementById('dir-prev')?.addEventListener('click', () => {

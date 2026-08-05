@@ -90,7 +90,108 @@
         return Math.round(clamp((completed / target) * 100, 0, 100));
     }
 
-    return { calculateProgress, calculateStreak, awardBadges, campaignProgress };
+    const MISSION_TIMEZONE = 'America/Detroit';
+    const VALID_CLASSIFICATIONS = new Set(['daily_time_sensitive', 'project_sensitive', 'hybrid', 'unclassified']);
+    const VALID_PROGRESS_SOURCES = new Set(['manual', 'subtasks', 'manual_override']);
+
+    function localDateKey(value, timeZone) {
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) return null;
+        try {
+            const parts = new Intl.DateTimeFormat('en-CA', { timeZone: timeZone || MISSION_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+            const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+            return `${values.year}-${values.month}-${values.day}`;
+        } catch (error) { return null; }
+    }
+
+    function occurrenceKey(task, date) {
+        const day = typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)
+            ? date : localDateKey(date, MISSION_TIMEZONE);
+        return task && task.id != null && day ? `${String(task.id)}@${day}` : null;
+    }
+
+    function normalizeMissionTask(source, idFactory) {
+        const input = source && typeof source === 'object' ? source : {};
+        const id = input.id != null && String(input.id).trim() ? String(input.id).trim() : (idFactory ? idFactory(input) : 'mission-1');
+        const subtasks = Array.isArray(input.subtasks) ? input.subtasks.map(item => ({ ...item })) : [];
+        return { ...input, id, title: String(input.title || '').trim(), vector: String(input.vector || 'work'), priority: input.priority ? String(input.priority) : 'p1', sourceView: input.sourceView || 'today', classification: VALID_CLASSIFICATIONS.has(input.classification) ? input.classification : 'unclassified', project_id: input.project_id == null ? undefined : String(input.project_id), completed: input.completed === true, project_progress: clamp(Number.isFinite(Number(input.project_progress)) ? Number(input.project_progress) : 0, 0, 1), progress_source: VALID_PROGRESS_SOURCES.has(input.progress_source) ? input.progress_source : 'manual', subtasks, source: input.source && typeof input.source === 'object' ? { ...input.source } : { type: 'local' }, _version: Number.isFinite(Number(input._version)) ? Number(input._version) : 1 };
+    }
+
+    function stateShape(state) {
+        const input = state && typeof state === 'object' ? state : {};
+        return { ...input, completedOccurrences: Array.isArray(input.completedOccurrences) ? [...new Set(input.completedOccurrences.map(String))] : [], completions: Array.isArray(input.completions) ? input.completions.map(item => ({ ...item })) : [], legacyCompletedIds: Array.isArray(input.legacyCompletedIds) ? [...new Set(input.legacyCompletedIds.map(String))] : [] };
+    }
+
+    function migrateMissionState(legacyIds, state, date) {
+        const result = stateShape(state);
+        const day = typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : localDateKey(date, MISSION_TIMEZONE);
+        (Array.isArray(legacyIds) ? legacyIds : []).forEach(id => { const key = `${String(id)}@${day}`; if (day && !result.completedOccurrences.includes(key)) result.completedOccurrences.push(key); if (!result.legacyCompletedIds.includes(String(id))) result.legacyCompletedIds.push(String(id)); });
+        return result;
+    }
+
+    function normalizedWeights(task) {
+        const classification = task.classification;
+        const defaults = classification === 'hybrid' ? { daily: 0.25, project: 0.75 } : classification === 'daily_time_sensitive' ? { daily: 1, project: 0 } : { daily: 0, project: 1 };
+        const daily = Number(task.daily_weight); const project = Number(task.project_weight);
+        if (Number.isFinite(daily) && Number.isFinite(project) && daily >= 0 && project >= 0 && daily + project > 0) {
+            const total = daily + project; return { daily: daily / total, project: project / total };
+        }
+        return defaults;
+    }
+
+    function progressValue(task, state, day) {
+        const occurrence = occurrenceKey(task, day);
+        const explicitDaily = Number(task.daily_progress);
+        const daily = Number.isFinite(explicitDaily) ? clamp(explicitDaily, 0, 1) : (state.completedOccurrences.includes(occurrence) || (task.completed === true && !task.recurring) ? 1 : 0);
+        const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
+        const derived = subtasks.length ? subtasks.filter(item => item && item.completed === true).length / subtasks.length : 0;
+        const manual = clamp(Number(task.project_progress) || 0, 0, 1);
+        const source = VALID_PROGRESS_SOURCES.has(task.progress_source) ? task.progress_source : 'manual';
+        const project = source === 'subtasks' ? derived : manual;
+        return { value: clamp(normalizedWeights(task).daily * daily + normalizedWeights(task).project * project, 0, 1), source, derived, manual, conflict: source !== 'subtasks' && subtasks.length > 0 && Math.abs(derived - manual) > 0.000001 };
+    }
+
+    function calculateDailyProgress(tasks, state, day) {
+        const options = day && typeof day === 'object' ? day : { date: day };
+        const target = options.date || localDateKey(options.now || new Date(), MISSION_TIMEZONE);
+        const safe = stateShape(state); const items = (Array.isArray(tasks) ? tasks : []).filter(task => task && ['daily_time_sensitive', 'hybrid'].includes(task.classification) && eligibleOnDate(task, target));
+        const completed = items.filter(task => safe.completedOccurrences.includes(occurrenceKey(task, target))).length;
+        const missed = items.filter(task => {
+            const occ = occurrenceKey(task, target);
+            if (safe.completedOccurrences.includes(occ)) return false;
+            const due = dateOnly(task.due || task.due_date);
+            const expiry = dateOnly(task.expires_on || task.expiry_date || task.expiry);
+            return (due && due < target) || (expiry && expiry <= target);
+        }).map(task => occurrenceKey(task, target));
+        const historical = safe.completedOccurrences.filter(key => key.endsWith(`@${target}`) === false && key.split('@')[1] < target);
+        return { total: items.length, completed, missed: missed.length, percent: items.length ? Math.round((completed / items.length) * 100) : 0, date: target, history: { completed: historical, missed } };
+    }
+
+    function calculateProjectProgress(tasks, state, day) {
+        const items = (Array.isArray(tasks) ? tasks : []).filter(task => task && ['project_sensitive', 'hybrid'].includes(task.classification));
+        const safe = stateShape(state); const values = items.map(task => progressValue(task, safe, day)); const raw = values.reduce((sum, item) => sum + item.value, 0); const completed = Number((Math.round(raw * 1e10) / 1e10).toFixed(10));
+        return { total: items.length, completed, percent: items.length ? Math.round((completed / items.length) * 100) : 0, metadata: values.map((item, index) => ({ id: items[index].id, progress_source: item.source, conflict: item.conflict, derived: item.derived, manual: item.manual })) };
+    }
+
+    function completeMission(task, state, day, source) {
+        const normalized = normalizeMissionTask(task); const result = stateShape(state); const occurrence = occurrenceKey(normalized, day); const timestamp = new Date().toISOString();
+        normalized.completed = true;
+        if (occurrence && !result.completedOccurrences.includes(occurrence)) result.completedOccurrences.push(occurrence);
+        if (!result.completions.some(item => item.occurrence === occurrence)) result.completions.push({ id: normalized.id, occurrence, timestamp, source: VALID_PROGRESS_SOURCES.has(source) ? source : 'manual' });
+        result.legacyCompletedIds = [...new Set([...result.legacyCompletedIds, normalized.id])];
+        return { task: normalized, state: result };
+    }
+
+    function dateOnly(value) { return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : localDateKey(value, MISSION_TIMEZONE); }
+    function eligibleOnDate(task, target) {
+        const scheduled = dateOnly(task.scheduled_date || task.scheduled || task.start_date);
+        const due = dateOnly(task.due || task.due_date);
+        const expiry = dateOnly(task.expires_on || task.expiry_date || task.expiry);
+        if (scheduled && scheduled > target) return false;
+        return true;
+    }
+
+    return { calculateProgress, calculateStreak, awardBadges, campaignProgress, normalizeMissionTask, localDateKey, occurrenceKey, calculateDailyProgress, calculateProjectProgress, migrateMissionState, completeMission };
 });
 
 /* istanbul ignore next */

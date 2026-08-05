@@ -11,6 +11,8 @@ const expectedScripts = [
   'priority_escalation.js',
   'agent_communication.js',
   'dashboard.js',
+  'wolf_companion_core.js',
+  'wolf_companion.js',
 ];
 
 const scriptSources = [...index.matchAll(/<script\s+src="([^"]+)"\s*>/g)].map(match => match[1]);
@@ -30,5 +32,11 @@ assert.match(
   /function renderAgenda\(\)\s*\{[\s\S]*?if\s*\(!container\)[\s\S]*?console\.(?:error|warn)\(/,
   'renderAgenda must diagnose a missing agenda container instead of silently returning',
 );
+
+assert.match(index, /id="mission-create-form"/);
+assert.match(index, /id="daily-progress-bar"/);
+assert.match(index, /id="project-progress-bar"/);
+assert.match(dashboard, /cyberwolf_mission_state_v1/);
+assert.match(dashboard, /normalizeMissionTask/);
 
 console.log('cache_regression.test.js: all assertions passed');

@@ -57,9 +57,15 @@
 /* ===== GAMIFICATION ===== */
 .gamification-widget { border-color: rgba(176, 38, 255, 0.35); }
 .gamification-summary { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: center; }
-.gamification-progress-label { color: var(--neon-cyan); font-size: 0.75rem; margin: 8px 0 6px; }
+.mission-progress-row { display: flex; justify-content: space-between; align-items: baseline; color: var(--text-dim); font-size: 0.62rem; margin-top: 8px; }
+.gamification-progress-label { color: var(--neon-cyan); font-size: 0.75rem; margin: 0 0 6px; }
 .gamification-progress-track { height: 8px; background: rgba(0, 240, 255, 0.12); border: 1px solid rgba(0, 240, 255, 0.3); }
 .gamification-progress-bar { height: 100%; width: 0; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); box-shadow: 0 0 8px var(--neon-cyan); transition: width 0.25s ease; }
+.project-progress-bar { background: linear-gradient(90deg, var(--neon-purple), var(--neon-cyan)); }
+.mission-create-form { display: grid; grid-template-columns: 2fr 1fr 1fr 1.2fr auto; gap: 7px; margin-top: 14px; }
+.mission-create-form input, .mission-create-form select, .mission-create-form button { min-width: 0; padding: 8px; border: 1px solid rgba(0, 240, 255, 0.35); background: rgba(0, 10, 30, 0.8); color: var(--text-main); font: 0.62rem 'Fira Code', monospace; }
+.mission-create-form button { color: var(--neon-cyan); cursor: pointer; }
+@media (max-width: 800px) { .mission-create-form { grid-template-columns: 1fr 1fr; } .mission-create-form input:first-child, .mission-create-form button { grid-column: 1 / -1; } }
 .gamification-campaign-label { color: var(--text-dim); font-size: 0.6rem; margin-top: 6px; }
 .gamification-streak { color: var(--neon-purple); font-family: 'Orbitron', sans-serif; font-size: 1.5rem; text-align: center; text-shadow: 0 0 10px rgba(176, 38, 255, 0.5); }
 .gamification-streak small { display: block; color: var(--text-dim); font: 0.55rem 'Fira Code', monospace; margin-top: 3px; }
@@ -1110,3 +1116,17 @@ body {
     .finance-mid-row { grid-template-columns: 1fr; }
     .logo.glitch { font-size: 1.2rem; }
 }
+
+/* ===== PIXEL CYBERWOLF COMPANION ===== */
+#wolf-layer {
+    position: fixed; inset: 0; z-index: 10001; pointer-events: none; overflow: hidden;
+}
+.wolf-companion {
+    position: absolute; left: 0; top: 0; width: 48px; height: 48px; min-width: 48px; min-height: 48px;
+    padding: 0; border: 1px solid rgba(0, 240, 255, .65); background: rgba(5, 7, 11, .92);
+    box-shadow: 0 0 12px rgba(0, 240, 255, .35), 3px 3px 0 rgba(255, 40, 215, .65);
+    cursor: pointer; pointer-events: auto; touch-action: manipulation; transform: translate3d(0, 0, 0);
+}
+.wolf-companion canvas { display: block; width: 48px; height: 48px; image-rendering: pixelated; }
+.wolf-companion[data-state="CALLED"], .wolf-companion[data-state="CELEBRATING"] { border-color: #ff28d7; box-shadow: 0 0 18px rgba(255, 40, 215, .7), 3px 3px 0 #00f0ff; }
+@media (prefers-reduced-motion: reduce) { .wolf-companion { transition: none !important; } }
