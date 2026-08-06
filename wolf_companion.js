@@ -58,8 +58,8 @@
         const blinkFrame = !blinkOpen && (animFrame === 'IDLE');
         if (blinkFrame) {
             ctx.fillStyle = palette.BLACK;
-            // Eye spans (18,8,2,1) + glow at (18,9,1,1); cover all with 2x2 eyelid
-            ctx.fillRect(18, 8, 2, 2);
+            // Eye at (15,9) inside head mass; cover with 3×3 eyelid
+            ctx.fillRect(14, 7, 3, 3);
         }
     }
 

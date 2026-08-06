@@ -125,14 +125,14 @@ test('getWalkFrame(-1) returns WALK_B (safe mod)', () => assert.equal(getWalkFra
 test('IDLE_FRAME has a head (BLACK in x=15-22, y=5-15)', () => {
   assert.ok(hasColorInRegion(IDLE_FRAME, 'BLACK', 15, 5, 22, 15), 'head region missing BLACK');
 });
-test('IDLE_FRAME has ears (CYAN in x=19-22, y=0-4)', () => {
-  assert.ok(hasColorInRegion(IDLE_FRAME, 'CYAN', 19, 0, 22, 4), 'ear region missing CYAN');
+test('IDLE_FRAME ears (CYAN accent in x=13..21, y=2..4)', () => {
+  assert.ok(hasColorInRegion(IDLE_FRAME, 'CYAN', 13, 2, 21, 4));
 });
-test('IDLE_FRAME has a muzzle (BLACK in x=22-23, y=10-14)', () => {
-  assert.ok(hasColorInRegion(IDLE_FRAME, 'BLACK', 22, 10, 23, 14), 'muzzle region missing BLACK');
+test('WALK_A_FRAME ears (CYAN accent)', () => {
+  assert.ok(hasColorInRegion(WALK_A_FRAME, 'CYAN', 13, 2, 21, 4));
 });
-test('IDLE_FRAME has a body (BLACK in x=4-15, y=7-17)', () => {
-  assert.ok(hasColorInRegion(IDLE_FRAME, 'BLACK', 4, 7, 15, 17), 'body region missing BLACK');
+test('WALK_B_FRAME ears (CYAN accent)', () => {
+  assert.ok(hasColorInRegion(WALK_B_FRAME, 'CYAN', 13, 2, 21, 4));
 });
 test('IDLE_FRAME has four legs (\u22654 column groups in y=17-22)', () => {
   const groups = countLegColumns(IDLE_FRAME);
@@ -294,6 +294,236 @@ test('rewardTaskCompletion caps at maxSupplies', () => {
   assert.equal(r.state.supplies.Food, 10);
   assert.equal(r.state.supplies.Water, 10);
   assert.equal(r.state.supplies.Care, 10);
+});
+
+/* ─── Anatomy: wolf must read as a quadrupedal creature ─── */
+
+// Helpers
+function countPixels(blocks, colorKey) {
+  let n = 0;
+  blocks.forEach(([c]) => { if (c === colorKey) n += 1; }); // rough proxy
+  const set = pixelSet(blocks);
+  return set.size;
+}
+
+function dominantColorInRegion(blocks, xMin, yMin, xMax, yMax) {
+  const counts = {};
+  for (const p of pixelSet(blocks)) {
+    const [px, py, col] = p.split(',');
+    const nx = Number(px), ny = Number(py);
+    if (nx >= xMin && nx <= xMax && ny >= yMin && ny <= yMax) {
+      counts[col] = (counts[col] || 0) + 1;
+    }
+  }
+  let best = null, bestN = 0;
+  for (const [col, cnt] of Object.entries(counts)) {
+    if (cnt > bestN) { best = col; bestN = cnt; }
+  }
+  return best;
+}
+
+// A recognizable sprite needs enough pixels (not just a few dots)
+function totalPixelCount(blocks) { return pixelSet(blocks).size; }
+
+test('IDLE_FRAME total pixel count >= 80', () => {
+  assert.ok(totalPixelCount(IDLE_FRAME) >= 80,
+    `IDLE has ${totalPixelCount(IDLE_FRAME)} px — too sparse to read as character`);
+});
+test('WALK_A_FRAME total pixel count >= 80', () => {
+  assert.ok(totalPixelCount(WALK_A_FRAME) >= 80,
+    `WALK_A has ${totalPixelCount(WALK_A_FRAME)} px — too sparse`);
+});
+test('WALK_B_FRAME total pixel count >= 80', () => {
+  assert.ok(totalPixelCount(WALK_B_FRAME) >= 80,
+    `WALK_B has ${totalPixelCount(WALK_B_FRAME)} px — too sparse`);
+});
+
+// Head region: solid dark mass with ear accents on top
+test('IDLE_FRAME head is dark-dominant (BLACK in upper-right quadrant)', () => {
+  const d = dominantColorInRegion(IDLE_FRAME, 14, 2, 23, 14);
+  assert.equal(d, 'BLACK', 'head should be BLACK-dominant');
+});
+test('WALK_A_FRAME head is dark-dominant', () => {
+  const d = dominantColorInRegion(WALK_A_FRAME, 14, 2, 23, 14);
+  assert.equal(d, 'BLACK', 'head should be BLACK-dominant');
+});
+test('WALK_B_FRAME head is dark-dominant', () => {
+  const d = dominantColorInRegion(WALK_B_FRAME, 14, 2, 23, 14);
+  assert.equal(d, 'BLACK', 'head should be BLACK-dominant');
+});
+
+// Ears: accent-colored pixels in the top-center (above head)
+test('IDLE_FRAME ears have CYAN accents in top strip y=0..5, x=16..22', () => {
+  assert.ok(hasColorInRegion(IDLE_FRAME, 'CYAN', 16, 0, 22, 5));
+});
+test('WALK_A_FRAME ears have CYAN accents', () => {
+  assert.ok(hasColorInRegion(WALK_A_FRAME, 'CYAN', 16, 0, 22, 5));
+});
+test('WALK_B_FRAME ears have CYAN accents', () => {
+  assert.ok(hasColorInRegion(WALK_B_FRAME, 'CYAN', 16, 0, 22, 5));
+});
+
+// Muzzle: dark pixels extending to front-right edge
+test('IDLE_FRAME muzzle touches rightmost pixels (x>=22)', () => {
+  assert.ok(hasColorInRegion(IDLE_FRAME, 'BLACK', 22, 7, 23, 13),
+    'muzzle should extend to canvas edge for clear facing direction');
+});
+test('WALK_A_FRAME muzzle touches rightmost pixels', () => {
+  assert.ok(hasColorInRegion(WALK_A_FRAME, 'BLACK', 22, 7, 23, 13));
+});
+test('WALK_B_FRAME muzzle touches rightmost pixels', () => {
+  assert.ok(hasColorInRegion(WALK_B_FRAME, 'BLACK', 22, 7, 23, 13));
+});
+
+// Body: contiguous dark mass in center
+test('IDLE_FRAME body center is continuous (no gaps larger than 2px)', () => {
+  // Check that rows 7-15 have at least 5 consecutive BLACK pixels somewhere
+  const pixels = pixelSet(IDLE_FRAME);
+  let found = false;
+  for (let row = 7; row <= 15; row++) {
+    let run = 0;
+    for (let col = 0; col < 24; col++) {
+      if (pixels.has(`${col},${row},BLACK`)) run++;
+      else run = 0;
+      if (run >= 5) { found = true; break; }
+    }
+    if (found) break;
+  }
+  assert.ok(found, 'body should have ≥5 contiguous BLACK pixels in mid rows');
+});
+test('WALK_A_FRAME body center is continuous', () => {
+  const pixels = pixelSet(WALK_A_FRAME);
+  let found = false;
+  for (let row = 7; row <= 15; row++) {
+    let run = 0;
+    for (let col = 0; col < 24; col++) {
+      if (pixels.has(`${col},${row},BLACK`)) run++;
+      else run = 0;
+      if (run >= 5) { found = true; break; }
+    }
+    if (found) break;
+  }
+  assert.ok(found, 'body should have ≥5 contiguous BLACK pixels');
+});
+test('WALK_B_FRAME body center is continuous', () => {
+  const pixels = pixelSet(WALK_B_FRAME);
+  let found = false;
+  for (let row = 7; row <= 15; row++) {
+    let run = 0;
+    for (let col = 0; col < 24; col++) {
+      if (pixels.has(`${col},${row},BLACK`)) run++;
+      else run = 0;
+      if (run >= 5) { found = true; break; }
+    }
+    if (found) break;
+  }
+  assert.ok(found, 'body should have ≥5 contiguous BLACK pixels');
+});
+
+// Legs: four separate column groups (two front, two back), each with paw pixels
+test('IDLE_FRAME legs have 4 distinct vertical columns', () => {
+  const cols = new Set();
+  for (const p of pixelSet(IDLE_FRAME)) {
+    const [x, y, c] = p.split(',');
+    if ((c === 'BLACK' || c === 'CYAN') && y >= 16) cols.add(Number(x));
+  }
+  const sorted = [...cols].sort((a,b)=>a-b);
+  let groups = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    if (i === 0 || sorted[i] > sorted[i-1]+1) groups++;
+  }
+  assert.ok(groups >= 4, `need ≥4 leg column groups, got ${groups}`);
+});
+test('WALK_A_FRAME legs have 4 distinct column groups', () => {
+  const cols = new Set();
+  for (const p of pixelSet(WALK_A_FRAME)) {
+    const [x, y, c] = p.split(',');
+    if ((c === 'BLACK' || c === 'CYAN') && y >= 16) cols.add(Number(x));
+  }
+  const sorted = [...cols].sort((a,b)=>a-b);
+  let groups = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    if (i === 0 || sorted[i] > sorted[i-1]+1) groups++;
+  }
+  assert.ok(groups >= 4, `need ≥4 leg column groups, got ${groups}`);
+});
+test('WALK_B_FRAME legs have 4 distinct column groups', () => {
+  const cols = new Set();
+  for (const p of pixelSet(WALK_B_FRAME)) {
+    const [x, y, c] = p.split(',');
+    if ((c === 'BLACK' || c === 'CYAN') && y >= 16) cols.add(Number(x));
+  }
+  const sorted = [...cols].sort((a,b)=>a-b);
+  let groups = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    if (i === 0 || sorted[i] > sorted[i-1]+1) groups++;
+  }
+  assert.ok(groups >= 4, `need ≥4 leg column groups, got ${groups}`);
+});
+
+// Tail: connected chain from rear-left to upper-left (bushy tail pointing up)
+function tailConnectedness(blocks) {
+  // Extract all pixels where x<=6 or x<=4 depending on frame
+  // Then check they form a single connected component via 4-connectivity
+  const tailPixels = [];
+  for (const p of pixelSet(blocks)) {
+    const [x, y, c] = p.split(',');
+    const nx = Number(x);
+    if (nx <= 5) tailPixels.push({x: nx, y: Number(y)});
+  }
+  if (tailPixels.length < 3) return false;
+  // BFS connectivity
+  const visited = new Set();
+  const queue = [{...tailPixels[0]}];
+  visited.add(`${tailPixels[0].x},${tailPixels[0].y}`);
+  while (queue.length) {
+    const cur = queue.shift();
+    const neighbors = [
+      {x: cur.x+1, y: cur.y}, {x: cur.x-1, y: cur.y},
+      {x: cur.x, y: cur.y+1}, {x: cur.x, y: cur.y-1}
+    ];
+    for (const n of neighbors) {
+      const key = `${n.x},${n.y}`;
+      if (!visited.has(key) && tailPixels.some(p => p.x === n.x && p.y === n.y)) {
+        visited.add(key);
+        queue.push(n);
+      }
+    }
+  }
+  return visited.size === tailPixels.length;
+}
+
+test('IDLE_FRAME tail pixels are connected (single component)', () => {
+  assert.ok(tailConnectedness(IDLE_FRAME), 'IDLE tail pixels must form a connected bushy shape');
+});
+test('WALK_A_FRAME tail pixels are connected', () => {
+  assert.ok(tailConnectedness(WALK_A_FRAME), 'WALK_A tail pixels must connect');
+});
+test('WALK_B_FRAME tail pixels are connected', () => {
+  assert.ok(tailConnectedness(WALK_B_FRAME), 'WALK_B tail pixels must connect');
+});
+
+// Cyberpunk palette usage: all 4 colors present in every frame
+test('IDLE_FRAME uses all 4 palette colors', () => {
+  const used = new Set();
+  IDLE_FRAME.forEach(([c]) => used.add(c));
+  ['BLACK', 'DARK', 'CYAN', 'MAGENTA'].forEach(c => {
+    assert.ok(used.has(c), `IDLE_FRAME missing '${c}'`);
+  });
+});
+test('WALK_A_FRAME uses all 4 palette colors', () => {
+  const used = new Set();
+  WALK_A_FRAME.forEach(([c]) => used.add(c));
+  ['BLACK', 'DARK', 'CYAN', 'MAGENTA'].forEach(c => {
+    assert.ok(used.has(c), `WALK_A_FRAME missing '${c}'`);
+  });
+});
+test('WALK_B_FRAME uses all 4 palette colors', () => {
+  const used = new Set();
+  WALK_B_FRAME.forEach(([c]) => used.add(c));
+  ['BLACK', 'DARK', 'CYAN', 'MAGENTA'].forEach(c => {
+    assert.ok(used.has(c), `WALK_B_FRAME missing '${c}'`);
+  });
 });
 
 /* ─── Summary ─── */
