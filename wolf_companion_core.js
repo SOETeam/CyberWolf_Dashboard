@@ -409,9 +409,18 @@
         const wolfHeight = Math.max(0, Number(wolf.height) || 0);
         const maxX = Math.max(0, width - wolfWidth);
         const maxY = Math.max(0, height - wolfHeight);
+        // Offset-aware clamping: if the surface has non-trivial left/top offsets,
+        // treat the valid range as [left, left+width-wolfWidth] rather than [0, width-wolfWidth].
+        const sx = Math.floor(Number(area.left) || 0);
+        const sy = Math.floor(Number(area.top) || 0);
+        const offsetX = (sx > 0 || sy > 0) ? true : false;
+        const xMin = offsetX ? sx : 0;
+        const yMin = offsetX ? sy : 0;
+        const xMax = offsetX ? sx + maxX : maxX;
+        const yMax = offsetX ? sy + maxY : maxY;
         const x = Number(point.x);
         const y = Number(point.y);
-        return { x: Math.min(maxX, Math.max(0, Number.isFinite(x) ? x : 0)), y: Math.min(maxY, Math.max(0, Number.isFinite(y) ? y : 0)) };
+        return { x: Math.min(xMax, Math.max(xMin, Number.isFinite(x) ? x : xMin)), y: Math.min(yMax, Math.max(yMin, Number.isFinite(y) ? y : yMin)) };
     }
 
     function visibleSurface(bounds, size, margin) {

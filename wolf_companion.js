@@ -41,8 +41,11 @@
         // Controls, cards, modals, scrollable containers, draggable items
         if (target.closest('button, input, select, textarea, a, [role="button"], .task-card, .agenda-task-card, .agenda-event, .calendar-modal, .scrollable, [draggable="true"]')) return true;
         // Also block scrollable parents (vertical/horizontal overflow indicates scroll container)
+        // Skip known panel-level containers that are intentionally scrollable
         let node = target;
+        const stopAt = new Set(['view-panel', 'dashboard-grid', 'shared-widgets']);
         while (node && node !== root.document.body) {
+            if (stopAt.has(node.className) || stopAt.has(node.id)) break;
             if (node.scrollHeight > node.clientHeight + 2 || node.scrollWidth > node.clientWidth + 2) return true;
             node = node.parentElement;
         }
@@ -380,7 +383,14 @@
         if (reduced) {
             setState(core.STATES.IDLE);
         } else {
-            root.setTimeout(function () { setState(core.STATES.IDLE); }, 450);
+            root.setTimeout(function () {
+                setState(core.STATES.IDLE);
+                // FIX: Transition to ROAMING after surfaces likely computed (~500ms).
+                // If surfaces were found via faster-rendered DOM elements,
+                // they may already be available here. Either way, the fallback
+                // viewport surface lets roaming begin immediately.
+                if (!destroyed) setState(core.STATES.ROAMING);
+            }, 450);
         }
         return api;
     }
