@@ -444,12 +444,84 @@
         catch (error) { return createState(); }
     }
 
+    /* ── Walkable-surface geometry ─────────────────────────────── */
+
+    /**
+     * Normalize a list of DOM-like rectangles into viewport-coordinates
+     * {left,top,right,bottom,width,height}. Discards hidden, empty,
+     * offscreen or malformed entries. Minimum usable dimensions default
+     * to wolf footprint unless overridden.
+     */
+    function normalizeSurfaces(rects, bounds, wolfFootprint) {
+        const area = bounds && typeof bounds === 'object' ? bounds : {};
+        const vpW = Math.max(0, Number(area.width) || 0);
+        const vpH = Math.max(0, Number(area.height) || 0);
+        const wf = wolfFootprint && typeof wolfFootprint === 'object' ? wolfFootprint : { width: 48, height: 48 };
+        const minW = Math.max(0, Number(wf.width) || 0);
+        const minH = Math.max(0, Number(wf.height) || 0);
+
+        const result = [];
+        // Ensure input is iterable
+        const sources = Array.isArray(rects) ? rects : [rects];
+        for (const rect of sources) {
+            if (!rect || typeof rect !== 'object') continue;
+            const l = Number(rect.left) || 0;
+            const t = Number(rect.top) || 0;
+            const r = Number(rect.right) || 0;
+            const b = Number(rect.bottom) || 0;
+            const w = Math.abs(r - l);
+            const h = Math.abs(b - t);
+            // Skip zero/negative dimensions
+            if (w <= 0 || h <= 0) continue;
+            // Skip rects smaller than wolf footprint — not traversable
+            if (w < minW || h < minH) continue;
+            // Clamp to viewport: only include surface portion inside viewport
+            const clampedLeft = Math.max(l, 0);
+            const clampedTop = Math.max(t, 0);
+            const clampedRight = Math.min(r, vpW);
+            const clampedBottom = Math.min(b, vpH);
+            const cw = clampedRight - clampedLeft;
+            const ch = clampedBottom - clampedTop;
+            if (cw <= 0 || ch <= 0) continue;
+            result.push({ left: clampedLeft, top: clampedTop, right: clampedRight, bottom: clampedBottom, width: cw, height: ch });
+        }
+        return result;
+    }
+
+    /**
+     * Pick a deterministic target position within a normalized surface.
+     * anchor ∈ ['random','center','top-left','bottom-right'].
+     * Returns {x, y} clamped to surface minus a small margin.
+     */
+    function surfaceTarget(surface, wolfSize, anchor) {
+        if (!surface || !Number.isFinite(surface.width) || !Number.isFinite(surface.height)) return null;
+        const wolf = wolfSize && typeof wolfSize === 'object' ? wolfSize : { width: 48, height: 48 };
+        const ww = Math.max(0, Number(wolf.width) || 0);
+        const wh = Math.max(0, Number(wolf.height) || 0);
+        const margin = Math.max(0, Number(surface.margin) || 2);
+        const maxX = Math.max(margin, surface.width - ww - margin);
+        const maxY = Math.max(margin, surface.height - wh - margin);
+
+        switch (anchor) {
+            case 'top-left': return { x: surface.left + margin, y: surface.top + margin };
+            case 'bottom-right': return { x: surface.left + maxX, y: surface.top + maxY };
+            case 'center': return { x: surface.left + (surface.width - ww) / 2, y: surface.top + (surface.height - wh) / 2 };
+            case 'random':
+            default:
+                return {
+                    x: surface.left + margin + Math.random() * maxX,
+                    y: surface.top + margin + Math.random() * maxY
+                };
+        }
+    }
+
     return {
         STATES, DEFAULT_CONFIG, SPRITE_SIZE, PALETTE,
         IDLE_FRAME, WALK_A_FRAME, WALK_B_FRAME, WALK_FRAMES,
         getFrameBlocks, getWalkFrame, getPalette,
         createState, rewardTaskCompletion, transition,
         clampPosition, visibleSurface, entryEdge,
-        exportState, importState
+        exportState, importState,
+        normalizeSurfaces, surfaceTarget
     };
 });

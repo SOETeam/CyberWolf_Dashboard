@@ -12,19 +12,35 @@
     let taps = [], pointerStart = null, activePointers = new Set(), reduced = false;
     let animFrame = 'IDLE', walkStep = 0, animTick = 0, blinkOpen = true;
     let roamTarget = null;
+    let visibleSurfaces = []; // Normalized viewport-surface rectangles from DOM
+
+    /* ── Surface-compute rAF scheduler (one-raf throttle) ──────── */
+    let surfRaf = 0;
 
     const listeners = [];
     function on(target, event, handler, options) { target.addEventListener(event, handler, options); listeners.push(() => target.removeEventListener(event, handler, options)); }
     function load() { try { state = core.importState(root.localStorage.getItem(STORAGE_KEY) || null); } catch (_) { state = core.createState(); } }
     function save() { try { root.localStorage.setItem(STORAGE_KEY, core.exportState(state)); } catch (_) {} }
     function mediaReduced() { return !!(root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+
+    /* ── Modal/access-gate detection ───────────────────────────── */
     function modalBlocks() {
         const gate = root.document.getElementById('access-gate'), modal = root.document.getElementById('calendar-modal');
         return !!((gate && getComputedStyle(gate).display !== 'none') || (modal && !modal.classList.contains('hidden')));
     }
+
+    /* ── Pointer-event routing helper ──────────────────────────── */
+    /**
+     * Check whether a pointer event originated from an element that
+     * should NOT trigger triple-tap or any document-level wolf gesture.
+     * Uses composedPath() + closest-selector so shadow-DOM and nested
+     * elements are correctly handled.
+     */
     function blockedTarget(target) {
         if (!target || !target.closest) return true;
+        // Controls, cards, modals, scrollable containers, draggable items
         if (target.closest('button, input, select, textarea, a, [role="button"], .task-card, .agenda-task-card, .agenda-event, .calendar-modal, .scrollable, [draggable="true"]')) return true;
+        // Also block scrollable parents (vertical/horizontal overflow indicates scroll container)
         let node = target;
         while (node && node !== root.document.body) {
             if (node.scrollHeight > node.clientHeight + 2 || node.scrollWidth > node.clientWidth + 2) return true;
@@ -33,14 +49,105 @@
         return false;
     }
 
-    /* ── Render: draw the pixel-art wolf ──────────────────────── */
+    /* ── Visible dashboard surface derivation ────────────────────── */
+    /**
+     * Query the live DOM for panel/card/border elements that can serve
+     * as walkable terrain for the wolf. Excludes the wolf layer itself,
+     * modals, access gates, hidden panels, inputs, and buttons.
+     */
+    function getVisibleSurfaceRects() {
+        var selectors = '.widget, .view-panel > section, .task-card, .agenda-task-card, .agenda-vector-group, .filter-bar, .shared-widgets';
+        var results = root.document.querySelectorAll(selectors);
+        var rects = [];
+        for (var i = 0; i < results.length; i++) {
+            var el = results[i];
+            var style = getComputedStyle(el);
+            // Skip hidden / zero-size elements
+            if (style.display === 'none' || style.visibility === 'hidden') continue;
+            if (el.offsetWidth <= 0 || el.offsetHeight <= 0) continue;
+            var rect = el.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) continue;
+            rects.push(rect);
+        }
+        return rects;
+    }
+
+    /**
+     * Normalize DOM rects into viewport-coordinates via the core normalizer.
+     * Returns an array of {left,top,right,bottom,width,height} used for
+     * surface-based roaming targets. Throttled through one-rAF when called
+     * from dynamic sources (scroll, resize).
+     */
+    function computeSurfaces() {
+        if (destroyed) return;
+        var domRects = getVisibleSurfaceRects();
+        var vp = root.visualViewport;
+        var bounds = {
+            width: vp ? vp.width : root.innerWidth,
+            height: vp ? vp.height : root.innerHeight
+        };
+        visibleSurfaces = core.normalizeSurfaces(domRects, bounds, { width: CSS_SIZE, height: CSS_SIZE });
+    }
+
+    function scheduleSurfaceCompute() {
+        if (surfRaf) return; // Already pending — one-rAF throttling
+        surfRaf = root.requestAnimationFrame(function () {
+            surfRaf = 0;
+            if (!destroyed) computeSurfaces();
+        });
+    }
+
+    /* ── Position helpers ──────────────────────────────────────── */
+    function getSurface() {
+        // Fallback to viewport when no valid surfaces exist
+        if (visibleSurfaces && visibleSurfaces.length > 0) {
+            // Return bounding-box of all surfaces combined
+            var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (var i = 0; i < visibleSurfaces.length; i++) {
+                var s = visibleSurfaces[i];
+                if (s.left < minX) minX = s.left;
+                if (s.top < minY) minY = s.top;
+                if (s.right > maxX) maxX = s.right;
+                if (s.bottom > maxY) maxY = s.bottom;
+            }
+            return { width: maxX - minX, height: maxY - minY, left: minX, top: minY, right: maxX, bottom: maxY };
+        }
+        var vp = root.visualViewport;
+        return { width: vp ? vp.width : root.innerWidth, height: vp ? vp.height : root.innerHeight };
+    }
+
+    function pickNewRoamTarget() {
+        if (visibleSurfaces && visibleSurfaces.length > 0) {
+            // Pick a random surface from available ones
+            var idx = Math.floor(Math.random() * visibleSurfaces.length);
+            var surface = visibleSurfaces[idx];
+            // Try a few anchors before falling back to random
+            var anchors = ['random', 'center'];
+            var anchorIdx = Math.floor(Math.random() * anchors.length);
+            var tgt = core.surfaceTarget(surface, { width: CSS_SIZE, height: CSS_SIZE }, anchors[anchorIdx]);
+            if (tgt) {
+                // Convert surface-relative position to viewport position
+                roamTarget = { x: tgt.x, y: tgt.y };
+                return;
+            }
+        }
+        // Fallback: random viewport position (when no valid surfaces)
+        var surface = getSurface();
+        var margin = 10;
+        roamTarget = {
+            x: margin + Math.random() * (surface.width - CSS_SIZE - margin * 2),
+            y: margin + Math.random() * (surface.height - CSS_SIZE - margin * 2 - 60) + 60 // avoid very top
+        };
+    }
+
+    /* ── Render: draw the pixel-art wolf ───────────────────────── */
     const palette = core.getPalette();
     function drawWolf() {
         if (!ctx) return;
         ctx.clearRect(0, 0, LOGICAL_SIZE, LOGICAL_SIZE);
         ctx.imageSmoothingEnabled = false;
 
-        let blocks;
+        var blocks;
         if (animFrame === 'WALK_A' || animFrame === 'WALK_B') {
             blocks = core.getWalkFrame(walkStep);
         } else {
@@ -48,31 +155,30 @@
         }
 
         // Draw each rectangle block at logical coordinates
-        for (let i = 0; i < blocks.length; i++) {
-            const b = blocks[i];
+        for (var i = 0; i < blocks.length; i++) {
+            var b = blocks[i];
             ctx.fillStyle = palette[b[0]];
             ctx.fillRect(b[1], b[2], b[3], b[4]);
         }
 
         // Blink: draw eyelid over eye area when eyes closed
-        const blinkFrame = !blinkOpen && (animFrame === 'IDLE');
+        var blinkFrame = !blinkOpen && (animFrame === 'IDLE');
         if (blinkFrame) {
             ctx.fillStyle = palette.BLACK;
-            // Eye at (15,9) inside head mass; cover with 3×3 eyelid
             ctx.fillRect(14, 7, 3, 3);
         }
     }
 
-    /* ── Position rendering ───────────────────────────────────── */
+    /* ── Position rendering ────────────────────────────────────── */
     function render() {
         if (!button) return;
-        let breathOffset = 0;
+        var breathOffset = 0;
         if (state.state === core.STATES.IDLE && !reduced) {
             breathOffset = Math.sin(animTick * 0.08) * 1; // subtle 1px breathe
         } else if (state.state === core.STATES.CELEBRATING && !reduced) {
             breathOffset = Math.sin(animTick * 0.3) * 2; // excited bounce 2px
         }
-        const yOff = Math.round(state.position.y + breathOffset);
+        var yOff = Math.round(state.position.y + breathOffset);
         button.style.transform = 'translate3d(' + Math.round(state.position.x) + 'px,' + yOff + 'px,0)';
         button.dataset.state = state.state;
         drawWolf();
@@ -82,20 +188,19 @@
         if (!raf && !destroyed) raf = root.requestAnimationFrame(tick);
     }
 
-    /* ── Animation tick ───────────────────────────────────────── */
+    /* ── Animation tick ─────────────────────────────────────────── */
     function tick(timestamp) {
         raf = 0;
         if (destroyed) return;
         if (reduced) { render(); return; }
 
-        const currentState = state.state;
+        var currentState = state.state;
 
         if (currentState === core.STATES.IDLE || currentState === core.STATES.ROAMING) {
             animTick++;
 
-            // Breath animation: subtle canvas oscillation (handled via CSS class or position shift)
-            // Actually, just update blink state and walk frame
-            if (animTick % 30 === 0) { // ~every 0.5s at 60fps
+            // Blink cycle: ~every 0.5s at 60fps
+            if (animTick % 30 === 0) { // toggle closed
                 blinkOpen = !blinkOpen;
             }
             // Reset blink after 1 closed frame
@@ -111,11 +216,11 @@
                 animFrame = walkStep === 0 ? 'WALK_A' : 'WALK_B';
                 // Roam toward target
                 if (roamTarget) {
-                    const dx = roamTarget.x - state.position.x;
-                    const dy = roamTarget.y - state.position.y;
-                    const dist = Math.hypot(dx, dy);
+                    var dx = roamTarget.x - state.position.x;
+                    var dy = roamTarget.y - state.position.y;
+                    var dist = Math.hypot(dx, dy);
                     if (dist > 2) {
-                        const speed = 0.5;
+                        var speed = 0.5;
                         state.position.x += (dx / dist) * speed;
                         state.position.y += (dy / dist) * speed;
                     } else {
@@ -144,31 +249,19 @@
         if (!destroyed) raf = root.requestAnimationFrame(tick);
     }
 
-    function getSurface() {
-        const vp = root.visualViewport;
-        return { width: vp ? vp.width : root.innerWidth, height: vp ? vp.height : root.innerHeight };
-    }
-
-    function pickNewRoamTarget() {
-        const surface = getSurface();
-        const margin = 10;
-        roamTarget = {
-            x: margin + Math.random() * (surface.width - CSS_SIZE - margin * 2),
-            y: margin + Math.random() * (surface.height - CSS_SIZE - margin * 2 - 60) + 60 // avoid very top
-        };
-    }
-
-    /* ── Resize ────────────────────────────────────────────────── */
+    /* ── Resize ─────────────────────────────────────────────────── */
     function resize() {
         if (!layer) return;
-        const surface = getSurface();
+        var surface = getSurface();
         layer.style.width = surface.width + 'px';
         layer.style.height = surface.height + 'px';
         state.position = core.clampPosition(state.position, surface, { width: CSS_SIZE, height: CSS_SIZE });
         schedule();
+        // Recompute surfaces on resize (throttled through rAF)
+        scheduleSurfaceCompute();
     }
 
-    /* ── State setter ──────────────────────────────────────────── */
+    /* ── State setter ───────────────────────────────────────────── */
     function setState(next) {
         state = core.createState(Object.assign({}, state, { state: next }));
         save();
@@ -183,7 +276,29 @@
     function callWolf() {
         if (destroyed || paused || modalBlocks()) return;
         setState(core.STATES.CALLED);
-        if (!reduced) root.setTimeout(() => setState(core.STATES.IDLE), 900);
+        if (!reduced) root.setTimeout(function () { setState(core.STATES.IDLE); }, 900);
+    }
+
+    function pointerDown(event) {
+        activePointers.add(event.pointerId);
+        pointerStart = { x: event.clientX, y: event.clientY };
+    }
+
+    function pointerUp(event) {
+        activePointers.delete(event.pointerId);
+        // Triple-tap should not fire when pointing at interactive controls
+        if (!validTap(event)) { taps = []; pointerStart = null; return; }
+        var now = performance.now();
+        taps = taps.filter(function (t) { return now - t.time <= TAP_WINDOW; });
+        taps.push({ time: now, x: event.clientX, y: event.clientY });
+        if (taps.length >= 3) {
+            var first = taps[taps.length - 3];
+            var near = taps.slice(-3).every(function (t) {
+                return Math.hypot(t.x - first.x, t.y - first.y) <= TAP_DISTANCE;
+            });
+            if (near) { taps = []; callWolf(); }
+        }
+        pointerStart = null;
     }
 
     function validTap(event) {
@@ -192,33 +307,18 @@
         return !blockedTarget(event.target) && !modalBlocks();
     }
 
-    function pointerDown(event) { activePointers.add(event.pointerId); pointerStart = { x: event.clientX, y: event.clientY }; }
-    function pointerUp(event) {
-        activePointers.delete(event.pointerId);
-        if (!validTap(event)) { taps = []; pointerStart = null; return; }
-        const now = performance.now();
-        taps = taps.filter(t => now - t.time <= TAP_WINDOW);
-        taps.push({ time: now, x: event.clientX, y: event.clientY });
-        if (taps.length >= 3) {
-            const first = taps[taps.length - 3];
-            const near = taps.slice(-3).every(t => Math.hypot(t.x - first.x, t.y - first.y) <= TAP_DISTANCE);
-            if (near) { taps = []; callWolf(); }
-        }
-        pointerStart = null;
-    }
-
     function visibility() {
         paused = root.document.visibilityState === 'hidden';
         setState(paused ? core.STATES.PAUSED : core.STATES.IDLE);
     }
 
     function rewardTaskCompletion(taskId, metadata, config) {
-        const result = core.rewardTaskCompletion(state, taskId, metadata, config);
+        var result = core.rewardTaskCompletion(state, taskId, metadata, config);
         if (result.awarded) {
             state = result.state;
             save();
             setState(core.STATES.CELEBRATING);
-            if (!reduced) root.setTimeout(() => setState(core.STATES.IDLE), 1200);
+            if (!reduced) root.setTimeout(function () { setState(core.STATES.IDLE); }, 1200);
         }
         return result;
     }
@@ -230,6 +330,7 @@
         reduced = mediaReduced();
         load();
 
+        // Create transparent fixed overlay layer
         layer = root.document.createElement('div');
         layer.id = 'wolf-layer';
         layer.setAttribute('aria-label', 'CyberWolf companion');
@@ -238,6 +339,8 @@
         button.type = 'button';
         button.className = 'wolf-companion';
         button.tabIndex = 0;
+        button.setAttribute('title', 'Call CyberWolf');
+        button.setAttribute('aria-label', 'Click to call the CyberWolf');
 
         // Use logical-size canvas, CSS scales up
         canvas = root.document.createElement('canvas');
@@ -249,32 +352,90 @@
         layer.appendChild(button);
         root.document.body.appendChild(layer);
 
+        // Document-level pointer capture for triple-tap (passive, non-blocking)
         on(root.document, 'pointerdown', pointerDown, { capture: true, passive: true });
         on(root.document, 'pointerup', pointerUp, { capture: true, passive: true });
         on(root, 'resize', resize, { passive: true });
         if (root.visualViewport) on(root.visualViewport, 'resize', resize, { passive: true });
         on(root.document, 'visibilitychange', visibility);
-        on(button, 'click', callWolf);
+
+        // Direct click/tap on the button is the primary interaction seam
+        on(button, 'click', function (e) {
+            e.stopPropagation(); // Don't bubble to document triple-tap
+            callWolf();
+        });
+
+        // Scroll-based surface recomputation (throttled through rAF)
+        on(root.document, 'scroll', scheduleSurfaceCompute, { passive: true });
+
+        // Compute initial surfaces after paint
+        root.setTimeout(function () {
+            computeSurfaces();
+            // Observe DOM for layout changes using ResizeObserver + MutationObserver
+            tryObserve();
+        }, 500);
 
         resize();
         setState(core.STATES.ENTERING);
         if (reduced) {
             setState(core.STATES.IDLE);
         } else {
-            root.setTimeout(() => setState(core.STATES.IDLE), 450);
+            root.setTimeout(function () { setState(core.STATES.IDLE); }, 450);
         }
         return api;
     }
 
+    /**
+     * Attempt to set up observers for live surface tracking.
+     * Gracefully degrades on older browsers without ResizeObserver.
+     */
+    function tryObserve() {
+        var body = root.document.body;
+        // ResizeObserver: detect panel size/content changes
+        if (root.ResizeObserver) {
+            var ro = new root.ResizeObserver(function () {
+                if (!destroyed) scheduleSurfaceCompute();
+            });
+            // Observe key widget containers
+            var widgets = root.document.querySelectorAll('.view-panel.active, .shared-widgets, .dashboard-grid');
+            for (var i = 0; i < widgets.length; i++) {
+                try { ro.observe(widgets[i]); } catch (_) {}
+            }
+            listeners.push(function () { try { ro.disconnect(); } catch (_) {} });
+        }
+        // MutationObserver: detect added/removed cards or panels
+        if (root.MutationObserver) {
+            var mo = new root.MutationObserver(function (mutations) {
+                var surfaceChange = false;
+                for (var i = 0; i < mutations.length; i++) {
+                    var m = mutations[i];
+                    if (m.addedNodes.length || m.removedNodes.length ||
+                        (m.attributeName === 'class' && m.target.classList)) {
+                        // Check if mutation affects visible widget areas
+                        if (m.target.closest('.widget, .view-panel, .task-card, .agenda-task-card, .shared-widgets')) {
+                            surfaceChange = true;
+                            break;
+                        }
+                    }
+                }
+                if (surfaceChange && !destroyed) scheduleSurfaceCompute();
+            });
+            mo.observe(body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+            listeners.push(function () { try { mo.disconnect(); } catch (_) {} });
+        }
+    }
+
     function destroy() {
-        listeners.splice(0).forEach(fn => fn());
+        listeners.splice(0).forEach(function (fn) { fn(); });
         if (raf) root.cancelAnimationFrame(raf);
+        if (surfRaf) root.cancelAnimationFrame(surfRaf);
         if (layer) layer.remove();
         layer = button = canvas = ctx = null;
+        visibleSurfaces = [];
         destroyed = true;
     }
 
-    const api = { init, destroy, exportState: () => core.exportState(state), rewardTaskCompletion, getState: () => core.createState(state) };
+    var api = { init: init, destroy: destroy, exportState: function () { return core.exportState(state); }, rewardTaskCompletion: rewardTaskCompletion, getState: function () { return core.createState(state); } };
     root.CyberWolf = api;
     if (root.document.readyState === 'loading') on(root.document, 'DOMContentLoaded', init);
     else init();

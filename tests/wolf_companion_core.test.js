@@ -5,7 +5,7 @@ const {
   getFrameBlocks, getWalkFrame, getPalette,
   createState, clampPosition, transition,
   visibleSurface, entryEdge, exportState, importState,
-  rewardTaskCompletion
+  rewardTaskCompletion, normalizeSurfaces, surfaceTarget
 } = require('../wolf_companion_core.js');
 
 let passCount = 0;
@@ -523,6 +523,154 @@ test('WALK_B_FRAME uses all 4 palette colors', () => {
   WALK_B_FRAME.forEach(([c]) => used.add(c));
   ['BLACK', 'DARK', 'CYAN', 'MAGENTA'].forEach(c => {
     assert.ok(used.has(c), `WALK_B_FRAME missing '${c}'`);
+  });
+});
+
+/* ─── normalizeSurfaces: pure geometry contracts ────────────── */
+test('normalizeSurfaces returns array', () => {
+  const result = normalizeSurfaces([], { width: 1920, height: 1080 }, { width: 48, height: 48 });
+  assert.ok(Array.isArray(result));
+  assert.equal(result.length, 0);
+});
+test('normalizeSurfaces retains valid rectangle', () => {
+  const rects = [{ left: 10, top: 20, right: 300, bottom: 200 }];
+  const result = normalizeSurfaces(rects, { width: 1920, height: 1080 }, { width: 48, height: 48 });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].left, 10);
+  assert.equal(result[0].top, 20);
+  assert.equal(result[0].right, 300);
+  assert.equal(result[0].bottom, 200);
+  assert.equal(result[0].width, 290);
+  assert.equal(result[0].height, 180);
+});
+test('normalizeSurfaces discards zero-width rect', () => {
+  const rects = [{ left: 10, top: 20, right: 10, bottom: 200 }];
+  const result = normalizeSurfaces(rects, { width: 1920, height: 1080 }, { width: 48, height: 48 });
+  assert.equal(result.length, 0);
+});
+test('normalizeSurfaces discards negative-width rect', () => {
+  const rects = [{ left: 300, top: 20, right: 10, bottom: 200 }];
+  const result = normalizeSurfaces(rects, { width: 1920, height: 1080 }, { width: 48, height: 48 });
+  assert.equal(result.length, 0);
+});
+test('normalizeSurfaces discards small rects (smaller than wolf)', () => {
+  const rects = [{ left: 10, top: 10, right: 40, bottom: 60 }]; // width=30 < 48
+  const result = normalizeSurfaces(rects, { width: 1920, height: 1080 }, { width: 48, height: 48 });
+  assert.equal(result.length, 0);
+});
+test('normalizeSurfaces clamps to viewport bounds', () => {
+  const rects = [{ left: -50, top: -50, right: 2000, bottom: 1200 }];
+  const result = normalizeSurfaces(rects, { width: 1920, height: 1080 }, { width: 48, height: 48 });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].left, 0);
+  assert.equal(result[0].top, 0);
+  assert.equal(result[0].right, 1920);
+  assert.equal(result[0].bottom, 1080);
+});
+test('normalizeSurfaces discards offscreen rect', () => {
+  const rects = [{ left: 2000, top: 2000, right: 2500, bottom: 2500 }];
+  const result = normalizeSurfaces(rects, { width: 1920, height: 1080 }, { width: 48, height: 48 });
+  assert.equal(result.length, 0);
+});
+test('normalizeSurfaces discards null/undefined entries', () => {
+  const rects = [null, undefined, 'string'];
+  const result = normalizeSurfaces(rects, { width: 1920, height: 1080 }, { width: 48, height: 48 });
+  assert.equal(result.length, 0);
+});
+test('normalizeSurfaces handles non-array input (single rect)', () => {
+  const single = { left: 50, top: 50, right: 200, bottom: 150 };
+  const result = normalizeSurfaces(single, { width: 1920, height: 1080 }, { width: 48, height: 48 });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].left, 50);
+});
+test('normalizeSurfaces accepts multiple valid surfaces', () => {
+  const rects = [
+    { left: 10, top: 10, right: 200, bottom: 100 },
+    { left: 250, top: 10, right: 500, bottom: 100 }
+  ];
+  const result = normalizeSurfaces(rects, { width: 1920, height: 1080 }, { width: 48, height: 48 });
+  assert.equal(result.length, 2);
+  assert.equal(result[0].left, 10);
+  assert.equal(result[1].left, 250);
+});
+
+/* ─── surfaceTarget: deterministic position within a surface ── */
+test('surfaceTarget center returns centered position', () => {
+  const surface = { left: 100, top: 50, right: 300, bottom: 200, width: 200, height: 150, margin: 4 };
+  const target = surfaceTarget(surface, { width: 48, height: 48 }, 'center');
+  assert.ok(target !== null);
+  assert.equal(target.x, 176);
+  assert.equal(target.y, 101);
+});
+test('surfaceTarget top-left returns surface corner + margin', () => {
+  const surface = { left: 100, top: 50, right: 300, bottom: 200, width: 200, height: 150, margin: 4 };
+  const target = surfaceTarget(surface, { width: 48, height: 48 }, 'top-left');
+  assert.ok(target !== null);
+  assert.equal(target.x, 104);
+  assert.equal(target.y, 54);
+});
+test('surfaceTarget bottom-right returns surface bottom-right minus margin', () => {
+  const surface = { left: 100, top: 50, right: 300, bottom: 200, width: 200, height: 150, margin: 4 };
+  const target = surfaceTarget(surface, { width: 48, height: 48 }, 'bottom-right');
+  assert.ok(target !== null);
+  const maxX = Math.max(4, 200 - 48 - 4);
+  const maxY = Math.max(4, 150 - 48 - 4);
+  assert.equal(target.x, 248);
+  assert.equal(target.y, 148);
+});
+test('surfaceTarget random stays inside bounds over many samples', () => {
+  const surface = { left: 100, top: 50, right: 300, bottom: 200, width: 200, height: 150, margin: 4 };
+  for (let i = 0; i < 50; i++) {
+    const target = surfaceTarget(surface, { width: 48, height: 48 }, 'random');
+    // Allow tiny floating-point overshoot from Math.random() ≈ 1.0
+    assert.ok(target.x >= 104 && target.x <= 260, `random x out of [104,~260]: ${target.x}`);
+    assert.ok(target.y >= 54 && target.y <= 160, `random y out of [54,~160]: ${target.y}`);
+  }
+});
+test('surfaceTarget returns null for empty/null surface', () => {
+  assert.equal(surfaceTarget(null, { width: 48, height: 48 }, 'center'), null);
+  assert.equal(surfaceTarget({ width: NaN, height: 100 }, { width: 48, height: 48 }, 'center'), null);
+});
+test('surfaceTarget default anchor is random-like', () => {
+  const surface = { left: 0, top: 0, right: 500, bottom: 300, width: 500, height: 300, margin: 2 };
+  const t1 = surfaceTarget(surface, { width: 48, height: 48 });
+  const t2 = surfaceTarget(surface, { width: 48, height: 48 }, 'random');
+  assert.ok(t1 !== null && t2 !== null);
+});
+
+/* ─── Interaction & overlay data contracts ───────────────────── */
+test('transition call produces CALLED state', () => {
+  const s = createState({ state: STATES.IDLE });
+  const r = transition(s, 'call');
+  assert.equal(r.state, STATES.CALLED);
+  assert.equal(r.changed, true);
+});
+test('CALLED state can exit back through EXITING→IDLE chain', () => {
+  let s = createState({ state: STATES.CALLED });
+  let r = transition(s, 'exit');
+  assert.equal(r.state, STATES.EXITING);
+  s.state = STATES.EXITING;
+  r = transition(s, 'enter');
+  assert.equal(r.state, STATES.IDLE);
+});
+test('exportState includes position from surface-targeted roam', () => {
+  const s = createState({ state: STATES.ROAMING, position: {x: 100, y: 50} });
+  const json = exportState(s);
+  const parsed = JSON.parse(json);
+  assert.equal(parsed.state, STATES.ROAMING);
+  assert.equal(parsed.position.x, 100);
+  assert.equal(parsed.position.y, 50);
+});
+test('clampPosition applied to surfaceTarget output stays in bounds', () => {
+  const surface = { left: 100, top: 50, right: 500, bottom: 400, width: 400, height: 350, margin: 4 };
+  const bounds = { width: 500, height: 400 };
+  const wolf = { width: 48, height: 48 };
+  ['center','top-left','bottom-right'].forEach(anchor => {
+    const tgt = surfaceTarget(surface, wolf, anchor);
+    if (!tgt) throw new Error(`${anchor}: null target`);
+    const clamped = clampPosition(tgt, bounds, wolf);
+    assert.ok(clamped.x >= 0 && clamped.x + 48 <= 500, `${anchor}: x out`);
+    assert.ok(clamped.y >= 0 && clamped.y + 48 <= 400, `${anchor}: y out`);
   });
 });
 
