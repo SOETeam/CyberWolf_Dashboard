@@ -17,6 +17,10 @@
     let actionPanelOpen = false; // whether the action rail is currently showing
     let attentionAnim = 0; // counts ticks during call/attention response
     let lastDecayed = false; // track that we already applied one-on-load decay
+    // Tamagotchi status popup state
+    let statusPopupOpen = false; // whether tamagotchi status popup overlay is visible
+    var _statusPanelWasOpen = false; // tracks action panel state before popup opened
+    var _statusResumeState = core.STATES.IDLE; // state to restore after popup closes
     // World-scroll tracking
     let docScrollX = 0, docScrollY = 0; // accumulated document scroll
     // Re-entry state tracking
@@ -771,6 +775,217 @@
         return result;
     }
 
+    /* ── Tamagotchi Status Popup ─────────────────────────────────── */
+
+    /** Derive status message from needs: happy / meh / don't want to talk */
+    function deriveStatusMessage(n) {
+        // Distressed: any critical need → withdrawn mood
+        if (n.hunger <= 15 || n.happiness <= 15 || n.energy <= 15 || n.health <= 15) return "i don’t want to talk";
+        // Happy: happiness and energy both above threshold
+        if (n.happiness >= 60 && n.energy >= 30) return "i’m happy";
+        // Default: meh
+        return 'meh';
+    }
+
+    /** Close the tamagotchi status popup and restore movement */
+    function closeStatusPopup() {
+        statusPopupOpen = false;
+        var overlay = root.document.getElementById('wolf-status-overlay');
+        if (overlay) overlay.remove();
+        // Restore the state that was active before the popup paused movement.
+        setState(_statusResumeState === core.STATES.ROAMING ? core.STATES.ROAMING : core.STATES.IDLE);
+        // Restore action panel if it was open before popup
+        if (_statusPanelWasOpen) showActionPanel();
+    }
+
+    /** Open the tamagotchi status popup */
+    function openStatusPopup() {
+        statusPopupOpen = true;
+        _statusPanelWasOpen = actionPanelOpen;
+        _statusResumeState = state.state === core.STATES.ROAMING ? core.STATES.ROAMING : core.STATES.IDLE;
+        // Pause wolf movement while popup is visible
+        setState(core.STATES.PAUSED);
+        closeActionPanel();
+        // Create popup DOM
+        var popupEl = createStatusPopup();
+        if (!popupEl) return;
+        root.document.body.appendChild(popupEl);
+    }
+
+    /** Toggle the tamagotchi status popup */
+    function toggleStatusPopup() {
+        statusPopupOpen ? closeStatusPopup() : openStatusPopup();
+    }
+
+    /** Refresh the popup content with current needs state */
+    function refreshStatusPopup() {
+        if (!statusPopupOpen) return;
+        needs = core.createNeeds(needs); // deep clone via constructor
+        var n = core.createNeeds(needs);
+        try {
+            var card = root.document.querySelector('.wolf-status-card');
+            if (!card) return;
+
+            var hungerBar = card.querySelector('#ws-hunger-fill');
+            var happyBar = card.querySelector('#ws-happy-fill');
+            var energyBar = card.querySelector('#ws-energy-fill');
+            var healthBar = card.querySelector('#ws-health-fill');
+            var hungerValue = card.querySelector('#ws-hunger-val');
+            var happyValue = card.querySelector('#ws-happy-val');
+            var energyValue = card.querySelector('#ws-energy-val');
+            var healthValue = card.querySelector('#ws-health-val');
+            var moodText = card.querySelector('#ws-mood');
+
+            if (hungerBar) updateNeedBar(hungerBar, n.hunger);
+            if (happyBar) updateNeedBar(happyBar, n.happiness);
+            if (energyBar) updateNeedBar(energyBar, n.energy);
+            if (healthBar) updateNeedBar(healthBar, n.health);
+            if (hungerValue) hungerValue.textContent = Math.round(n.hunger);
+            if (happyValue) happyValue.textContent = Math.round(n.happiness);
+            if (energyValue) energyValue.textContent = Math.round(n.energy);
+            if (healthValue) healthValue.textContent = Math.round(n.health);
+            if (moodText) moodText.textContent = deriveStatusMessage(n);
+        } catch (_) {}
+    }
+
+    /** Update a single need bar element's width and class */
+    function updateNeedBar(bar, value) {
+        var v = Math.max(0, Math.min(100, Number(value) || 0));
+        bar.style.width = v + '%';
+        bar.className = 'wolf-need-bar-fill';
+        if (v >= 70)      bar.classList.add('high');
+        else if (v >= 40) bar.classList.add('medium');
+        else if (v >= 20) bar.classList.add('low');
+        else              bar.classList.add('critical');
+    }
+
+    /** Build the tamagotchi status popup DOM tree. Returns the root element or null */
+    function createStatusPopup() {
+        try {
+            var needsCopy = core.createNeeds(needs);
+            var moodMessage = deriveStatusMessage(needsCopy);
+
+            // Read wolf canvas dimensions for visual sync
+            var wSize = core.SPRITE_SIZE; // 24 logical px
+
+            // Overlay (full-screen backdrop)
+            var overlay = root.document.createElement('div');
+            overlay.id = 'wolf-status-overlay';
+            overlay.className = 'wolf-status-overlay';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-label', 'CyberWolf Status');
+            overlay.setAttribute('aria-modal', 'true');
+
+            // Card container
+            var card = root.document.createElement('div');
+            card.className = 'wolf-status-card';
+
+            // Header
+            var header = root.document.createElement('div');
+            header.className = 'wolf-status-header';
+            var icon = root.document.createElement('span');
+            icon.className = 'wolf-status-icon';
+            icon.textContent = '🐺';
+            var title = root.document.createElement('span');
+            title.className = 'wolf-status-title';
+            title.textContent = 'CYBERWOLF STATUS';
+            header.appendChild(icon);
+            header.appendChild(title);
+            card.appendChild(header);
+
+            // Mood message
+            var mood = root.document.createElement('div');
+            mood.id = 'ws-mood';
+            mood.className = 'wolf-status-mood';
+            mood.setAttribute('role', 'status');
+            mood.setAttribute('aria-live', 'polite');
+            mood.textContent = moodMessage;
+            card.appendChild(mood);
+
+            // Needs grid
+            var needsGrid = root.document.createElement('div');
+            needsGrid.className = 'wolf-status-needs';
+
+            var needsInfo = [
+                { key: 'Hunger',   valKey: 'hunger',  idSuffix: 'hunger' },
+                { key: 'Happiness', valKey: 'happiness', idSuffix: 'happy' },
+                { key: 'Energy',   valKey: 'energy',  idSuffix: 'energy' },
+                { key: 'Health',   valKey: 'health',  idSuffix: 'health' }
+            ];
+
+            needsInfo.forEach(function(item) {
+                var row = root.document.createElement('div');
+                row.className = 'wolf-need-row';
+                row.innerHTML = '<span class="wolf-need-label">' + item.key + '</span>'
+                    + '<div class="wolf-need-bar-track"><div class="wolf-need-bar-fill high" id="ws-' + item.idSuffix + '-fill"></div></div>'
+                    + '<span class="wolf-need-value" aria-live="off" id="ws-' + item.idSuffix + '-val">0</span>';
+
+                // Wire up individual value span for screen readers
+                var valSpan = row.querySelector('.wolf-need-value');
+                var fill = row.querySelector('.wolf-need-bar-fill');
+                var value = Math.round(needsCopy[item.valKey]);
+                valSpan.textContent = value;
+                updateNeedBar(fill, value);
+
+                needsGrid.appendChild(row);
+            });
+            card.appendChild(needsGrid);
+
+            // Divider
+            var divider = root.document.createElement('hr');
+            divider.className = 'wolf-status-divider';
+            card.appendChild(divider);
+
+            // Care action buttons
+            var actionsDiv = root.document.createElement('div');
+            actionsDiv.className = 'wolf-status-actions';
+            var careActions = [
+                { action: 'feed', label: 'Feed', icon: '🍖' },
+                { action: 'play', label: 'Play', icon: '⚡' },
+                { action: 'rest', label: 'Rest', icon: '💤' }
+            ];
+            careActions.forEach(function(ca) {
+                var btn = root.document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'wolf-status-btn';
+                btn.setAttribute('data-action', ca.action);
+                btn.setAttribute('aria-label', ca.label + ' CyberWolf');
+                btn.innerHTML = '<span>' + ca.icon + '</span><span>' + ca.label + '</span>';
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    doCareAction(ca.action);
+                    refreshStatusPopup();
+                });
+                actionsDiv.appendChild(btn);
+            });
+            card.appendChild(actionsDiv);
+
+            overlay.appendChild(card);
+
+            // Click on overlay background closes it (not when clicking inside the card)
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) closeStatusPopup();
+            });
+
+            // Escape to close
+            root.document.addEventListener('keydown', _handleStatusEscape);
+
+            return overlay;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /** Handle Escape key to close status popup */
+    function _handleStatusEscape(e) {
+        if (statusPopupOpen && e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            closeStatusPopup();
+            root.document.removeEventListener('keydown', _handleStatusEscape);
+        }
+    }
+
     /* ── Init / Destroy ────────────────────────────────────────── */
     function init() {
         if (layer || destroyed) return api;
@@ -909,25 +1124,21 @@
         if (root.visualViewport) on(root.visualViewport, 'resize', resize, { passive: true });
         on(root.document, 'visibilitychange', visibility);
 
-        // Direct click/tap on the button opens attention behavior
+        // Direct click/tap on the button opens/toggles tamagotchi status popup
         on(button, 'click', function (e) {
             e.stopPropagation();
-            if (!actionPanelOpen) {
-                callWolf();
-            } else {
-                closeActionPanel();
-            }
+            toggleStatusPopup();
         });
 
-        // Keyboard support: Enter/Space on button calls wolf, arrow keys navigate action seam
+        // Keyboard support: Enter/Space on button toggles status popup, arrow keys navigate action seam
         on(button, 'keydown', function(e) {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                if (!actionPanelOpen) callWolf();
-                else closeActionPanel();
+                toggleStatusPopup();
             }
             if (e.key === 'Escape') {
-                closeActionPanel();
+                if (statusPopupOpen) closeStatusPopup();
+                else closeActionPanel();
             }
         });
 
@@ -1024,7 +1235,11 @@
         callWolf: callWolf,
         doCareAction: doCareAction,
         toggleActionPanel: toggleActionPanel,
-        setPosition: setPosition
+        setPosition: setPosition,
+        // Tamagotchi status popup
+        openStatusPopup: openStatusPopup,
+        closeStatusPopup: closeStatusPopup,
+        refreshStatusPopup: refreshStatusPopup
     };
     root.CyberWolf = api;
     if (root.document.readyState === 'loading') on(root.document, 'DOMContentLoaded', init);

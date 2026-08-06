@@ -1244,6 +1244,178 @@ body {
     50%      { opacity: 1; }
 }
 
+/* ── Tamagotchi Status Popup ──────────────────────────────── */
+.wolf-status-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    overflow: auto;
+    background: rgba(10, 14, 39, 0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    cursor: pointer;
+}
+
+.wolf-status-card {
+    background: var(--bg-card);
+    border: 1px solid var(--neon-cyan);
+    border-radius: 8px;
+    padding: 16px 20px;
+    min-width: 0;
+    max-width: 320px;
+    width: min(320px, calc(100vw - 24px));
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.25), inset 0 0 10px rgba(0, 240, 255, 0.05);
+    cursor: default;
+    user-select: none;
+}
+
+.wolf-status-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.wolf-status-icon {
+    font-size: 1.5rem;
+}
+
+.wolf-status-title {
+    color: var(--neon-cyan);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-shadow: 0 0 6px var(--neon-cyan);
+}
+
+.wolf-status-mood {
+    color: var(--text-main);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.72rem;
+    font-style: italic;
+    margin-bottom: 12px;
+    padding: 4px 8px;
+    background: rgba(0, 240, 255, 0.05);
+    border-left: 2px solid var(--neon-purple);
+    border-radius: 0 4px 4px 0;
+}
+
+.wolf-status-needs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 16px;
+    margin-bottom: 14px;
+}
+
+.wolf-need-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.62rem;
+    color: var(--text-dim);
+}
+
+.wolf-need-label {
+    min-width: 56px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.wolf-need-bar-track {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.wolf-need-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.wolf-need-value {
+    min-width: 24px;
+    text-align: right;
+    color: var(--text-main);
+    font-weight: 600;
+    font-size: 0.6rem;
+}
+
+.wolf-need-bar-fill.high   { background: var(--green);  box-shadow: 0 0 4px var(--green); }
+.wolf-need-bar-fill.medium { background: var(--p2-yellow); box-shadow: 0 0 4px var(--p2-yellow); }
+.wolf-need-bar-fill.low    { background: var(--p1-orange); box-shadow: 0 0 4px var(--p1-orange); }
+.wolf-need-bar-fill.critical { background: var(--p0-red); box-shadow: 0 0 4px var(--p0-red); }
+
+.wolf-status-divider {
+    border: none;
+    border-top: 1px solid rgba(0, 240, 255, 0.15);
+    margin: 10px 0;
+}
+
+.wolf-status-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+}
+
+.wolf-status-btn {
+    background: rgba(0, 240, 255, 0.08);
+    border: 1px solid rgba(0, 240, 255, 0.3);
+    color: var(--neon-cyan);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.6rem;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.wolf-status-btn:hover, .wolf-status-btn:focus-visible {
+    background: rgba(0, 240, 255, 0.15);
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
+    outline: none;
+}
+
+.wolf-status-btn:active {
+    transform: scale(0.95);
+}
+
+/* Reduced motion for popup */
+@media (prefers-reduced-motion: reduce) {
+    .wolf-need-bar-fill { transition: none !important; }
+}
+
+/* Mobile-safe: ensure popup fits in viewport on small screens */
+@media (max-width: 480px) {
+    .wolf-status-card {
+        min-width: 0;
+        width: calc(100vw - 24px);
+        max-width: 280px;
+        padding: 12px 14px;
+    }
+    .wolf-status-needs {
+        grid-template-columns: 1fr;
+    }
+    .wolf-status-actions {
+        flex-wrap: wrap;
+    }
+}
+
+/* ── End Tamagotchi Status Popup ──────────────────────────── */
+
 /* Reduced motion: disable non-essential animations */
 @media (prefers-reduced-motion: reduce) {
     .wolf-companion { transition: none !important; }
