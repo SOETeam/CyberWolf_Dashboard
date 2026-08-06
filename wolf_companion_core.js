@@ -6,6 +6,7 @@
 })(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this), function () {
     'use strict';
 
+    /* ── State machine ─────────────────────────────────────────── */
     const STATES = Object.freeze({
         HIDDEN: 'HIDDEN', ENTERING: 'ENTERING', IDLE: 'IDLE', ROAMING: 'ROAMING',
         CALLED: 'CALLED', CELEBRATING: 'CELEBRATING', EXITING: 'EXITING', PAUSED: 'PAUSED'
@@ -19,6 +20,158 @@
         call: STATES.CALLED, celebrate: STATES.CELEBRATING, exit: STATES.EXITING,
         hide: STATES.HIDDEN, pause: STATES.PAUSED, resume: STATES.IDLE
     };
+    const SPRITE_SIZE = 24; // logical pixel dimensions, scaled 2x on canvas
+
+    /* ── Pixel-art palette ─────────────────────────────────────── */
+    const PALETTE = Object.freeze({
+        BLACK:   '#05070b',
+        DARK:    '#111827',
+        CYAN:    '#00f0ff',
+        MAGENTA: '#ff28d7'
+    });
+
+    /* ── Frame blocks: [colorKey, x, y, w, h] ─────────────────── */
+    /* Each frame is an array of rectangles.  The wolf faces RIGHT.
+     * Layout: tail (left, x=0-3), body (x=4-15), head (x=15-22), legs (y=17-22).
+     * Ears at x=19-22, y=0-4; eye at x=18-19, y=8-9; muzzle at x=22-23, y=10-14. */
+
+    const IDLE_FRAME = Object.freeze([
+        ['MAGENTA', 3, 0, 1, 2],
+        ['CYAN', 21, 0, 1, 3],
+        ['MAGENTA', 2, 1, 1, 2],
+        ['CYAN', 19, 1, 2, 2],
+        ['CYAN', 22, 1, 1, 2],
+        ['MAGENTA', 1, 2, 1, 3],
+        ['MAGENTA', 0, 3, 1, 1],
+        ['BLACK', 19, 3, 4, 1],
+        ['MAGENTA', 2, 4, 1, 1],
+        ['BLACK', 0, 5, 2, 12],
+        ['BLACK', 15, 5, 8, 3],
+        ['BLACK', 2, 6, 2, 1],
+        ['BLACK', 4, 7, 11, 10],
+        ['BLACK', 15, 8, 3, 8],
+        ['CYAN', 18, 8, 2, 1],
+        ['BLACK', 20, 8, 3, 8],
+        ['CYAN', 18, 9, 1, 1],
+        ['BLACK', 19, 9, 1, 7],
+        ['BLACK', 18, 10, 1, 6],
+        ['BLACK', 23, 10, 1, 1],
+        ['CYAN', 23, 11, 1, 1],
+        ['BLACK', 23, 12, 1, 3],
+        ['BLACK', 15, 16, 1, 5],
+        ['BLACK', 4, 17, 10, 1],
+        ['BLACK', 16, 17, 1, 4],
+        ['BLACK', 6, 18, 2, 3],
+        ['BLACK', 9, 18, 2, 3],
+        ['BLACK', 12, 18, 2, 3],
+        ['CYAN', 6, 21, 2, 1],
+        ['CYAN', 9, 21, 2, 1],
+        ['CYAN', 12, 21, 2, 1],
+        ['CYAN', 15, 21, 2, 1],
+        ['BLACK', 6, 22, 2, 1],
+        ['BLACK', 9, 22, 2, 1],
+        ['BLACK', 12, 22, 2, 1],
+        ['BLACK', 15, 22, 2, 1]
+    ]);
+
+    const WALK_A_FRAME = Object.freeze([
+        ['MAGENTA', 3, 0, 1, 2],
+        ['CYAN', 21, 0, 1, 3],
+        ['MAGENTA', 2, 1, 1, 2],
+        ['CYAN', 19, 1, 2, 2],
+        ['CYAN', 22, 1, 1, 2],
+        ['MAGENTA', 1, 2, 1, 3],
+        ['MAGENTA', 0, 3, 1, 1],
+        ['BLACK', 19, 3, 4, 1],
+        ['MAGENTA', 2, 4, 1, 1],
+        ['BLACK', 0, 5, 2, 12],
+        ['BLACK', 15, 5, 8, 3],
+        ['BLACK', 2, 6, 2, 1],
+        ['BLACK', 4, 7, 11, 10],
+        ['BLACK', 15, 8, 3, 8],
+        ['CYAN', 18, 8, 2, 1],
+        ['BLACK', 20, 8, 3, 8],
+        ['CYAN', 18, 9, 1, 1],
+        ['BLACK', 19, 9, 1, 7],
+        ['BLACK', 18, 10, 1, 6],
+        ['BLACK', 23, 10, 1, 1],
+        ['CYAN', 23, 11, 1, 1],
+        ['BLACK', 23, 12, 1, 3],
+        ['BLACK', 15, 16, 1, 1],
+        ['BLACK', 4, 17, 10, 1],
+        ['BLACK', 16, 17, 2, 4],
+        ['BLACK', 5, 18, 2, 3],
+        ['BLACK', 9, 18, 2, 3],
+        ['BLACK', 13, 18, 2, 3],
+        ['CYAN', 5, 21, 2, 1],
+        ['CYAN', 9, 21, 2, 1],
+        ['CYAN', 13, 21, 2, 1],
+        ['CYAN', 16, 21, 2, 1],
+        ['BLACK', 5, 22, 2, 1],
+        ['BLACK', 9, 22, 2, 1],
+        ['BLACK', 13, 22, 2, 1],
+        ['BLACK', 16, 22, 2, 1]
+    ]);
+
+    const WALK_B_FRAME = Object.freeze([
+        ['MAGENTA', 3, 0, 1, 2],
+        ['CYAN', 21, 0, 1, 3],
+        ['MAGENTA', 2, 1, 1, 2],
+        ['CYAN', 19, 1, 2, 2],
+        ['CYAN', 22, 1, 1, 2],
+        ['MAGENTA', 1, 2, 1, 3],
+        ['MAGENTA', 0, 3, 1, 1],
+        ['BLACK', 19, 3, 4, 1],
+        ['MAGENTA', 2, 4, 1, 1],
+        ['BLACK', 0, 5, 2, 12],
+        ['BLACK', 15, 5, 8, 3],
+        ['BLACK', 2, 6, 2, 1],
+        ['BLACK', 4, 7, 11, 10],
+        ['BLACK', 15, 8, 3, 8],
+        ['CYAN', 18, 8, 2, 1],
+        ['BLACK', 20, 8, 3, 8],
+        ['CYAN', 18, 9, 1, 1],
+        ['BLACK', 19, 9, 1, 7],
+        ['BLACK', 18, 10, 1, 6],
+        ['BLACK', 23, 10, 1, 1],
+        ['CYAN', 23, 11, 1, 1],
+        ['BLACK', 23, 12, 1, 3],
+        ['BLACK', 15, 16, 1, 5],
+        ['BLACK', 4, 17, 9, 1],
+        ['BLACK', 17, 17, 2, 5],
+        ['BLACK', 7, 18, 2, 3],
+        ['BLACK', 10, 18, 2, 3],
+        ['BLACK', 13, 18, 2, 3],
+        ['CYAN', 7, 21, 2, 1],
+        ['CYAN', 10, 21, 2, 1],
+        ['CYAN', 13, 21, 2, 1],
+        ['CYAN', 17, 21, 2, 1],
+        ['BLACK', 7, 22, 2, 1],
+        ['BLACK', 10, 22, 2, 1],
+        ['BLACK', 13, 22, 2, 1],
+        ['BLACK', 17, 22, 2, 1]
+    ]);
+
+    const WALK_FRAMES = Object.freeze([WALK_A_FRAME, WALK_B_FRAME]);
+
+    /* ── Sprite helpers ────────────────────────────────────────── */
+
+    function getFrameBlocks(frameName) {
+        switch (frameName) {
+            case 'IDLE':   return IDLE_FRAME;
+            case 'WALK_A':  return WALK_A_FRAME;
+            case 'WALK_B':  return WALK_B_FRAME;
+            default:        return IDLE_FRAME;
+        }
+    }
+
+    function getWalkFrame(index) {
+        return WALK_FRAMES[((index % 2) + 2) % 2]; // safe mod for negative
+    }
+
+    function getPalette() { return PALETTE; }
+
+    /* ── Geometry helpers ──────────────────────────────────────── */
 
     function cleanRewards(rewards) {
         const source = rewards && typeof rewards === 'object' ? rewards : {};
@@ -137,5 +290,12 @@
         catch (error) { return createState(); }
     }
 
-    return { STATES, DEFAULT_CONFIG, createState, rewardTaskCompletion, transition, clampPosition, visibleSurface, entryEdge, exportState, importState };
+    return {
+        STATES, DEFAULT_CONFIG, SPRITE_SIZE, PALETTE,
+        IDLE_FRAME, WALK_A_FRAME, WALK_B_FRAME, WALK_FRAMES,
+        getFrameBlocks, getWalkFrame, getPalette,
+        createState, rewardTaskCompletion, transition,
+        clampPosition, visibleSurface, entryEdge,
+        exportState, importState
+    };
 });
