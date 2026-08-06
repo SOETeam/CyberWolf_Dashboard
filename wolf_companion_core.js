@@ -524,6 +524,435 @@
         }
     }
 
+    /* ── Tamagotchi-style bounded needs model ──────────────────── */
+
+    /** Default needs values (0–100 scale). Higher is better. */
+    const DEFAULT_NEEDS = Object.freeze({
+        hunger:     30,   // food satisfaction; low → seeks forage/feed
+        happiness:  60,   // joy level; low → lingers, droops
+        energy:     70,   // stamina; low → prefers rest
+        health:     90    // condition; low → fragile, slow
+    });
+
+    /** Max elapsed seconds before decay cap kicks in. (~4 hours) */
+    const NEEDS_DECAY_MAX_SECS = 4 * 60 * 60;
+
+    /** Decay rate per second for each need. Negative means it goes down. */
+    const NEEDS_DECAY_RATE = Object.freeze({
+        hunger:     -0.008,   // ~3/hour; never empties quickly
+        happiness:  -0.006,   // ~2/min over long period
+        energy:     -0.004,   // slowly drains
+        health:     -0.001    // very slow drain
+    });
+
+    /** Maximum decay when loading after offline time (bounded at -30 points max). */
+    const NEEDS_OFFLINE_CAP = -30;
+
+    /** Create a fresh needs object; overrides replace defaults field-by-field. */
+    function createNeeds(overrides) {
+        const src = overrides && typeof overrides === 'object' ? overrides : {};
+        function val(key, fallback) {
+            const v = Number(src[key]);
+            if (!Number.isFinite(v)) return fallback !== undefined ? fallback : 50;
+            return clamp(v, 0, 100);
+        }
+        return {
+            version:   Number(src.version) || 1,
+            hunger:    val('hunger', DEFAULT_NEEDS.hunger),
+            happiness: val('happiness', DEFAULT_NEEDS.happiness),
+            energy:    val('energy', DEFAULT_NEEDS.energy),
+            health:    val('health', DEFAULT_NEEDS.health),
+            lastUpdate: src.lastUpdate || null       // ISO timestamp string
+        };
+    }
+
+    /** Advance needs by elapsed seconds. Deterministic — no randomness. */
+    function advanceNeeds(needs, nowIso) {
+        const n = createNeeds(needs);
+        if (!nowIso) { n.lastUpdate = new Date().toISOString(); return n; }
+        // Null/missing lastUpdate means no prior time → no decay, just record now
+        if (!n.lastUpdate) { n.lastUpdate = nowIso; return n; }
+
+        const last = new Date(n.lastUpdate);
+        if (!Number.isFinite(last.getTime())) { n.lastUpdate = nowIso; return n; }
+
+        const now = new Date(nowIso);
+        if (!Number.isFinite(now.getTime())) { n.lastUpdate = nowIso; return n; }
+
+        let elapsed = (now.getTime() - last.getTime()) / 1000; // seconds
+        if (elapsed <= 0) { n.lastUpdate = nowIso; return n; }
+        // Cap offline decay so a weekend doesn't starve the wolf
+        if (elapsed > NEEDS_DECAY_MAX_SECS) {
+            elapsed = NEEDS_DECAY_MAX_SECS;
+        }
+
+        ['hunger','happiness','energy','health'].forEach(key => {
+            const rate = NEEDS_DECAY_RATE[key] || 0;
+            const raw = n[key] + rate * elapsed;
+            n[key] = Math.max(0, Math.min(100, raw));
+        });
+
+        // Apply offline hard cap per-need
+        n.hunger    = Math.max(0, n.hunger    + Math.min(NEEDS_OFFLINE_CAP, (NEEDS_DECAY_RATE.hunger)    * Math.max(0, elapsed - NEEDS_DECAY_MAX_SECS)));
+        n.happiness = Math.max(0, n.happiness + Math.min(NEEDS_OFFLINE_CAP, (NEEDS_DECAY_RATE.happiness) * Math.max(0, elapsed - NEEDS_DECAY_MAX_SECS)));
+        n.energy    = Math.max(0, n.energy    + Math.min(NEEDS_OFFLINE_CAP, (NEEDS_DECAY_RATE.energy)    * Math.max(0, elapsed - NEEDS_DECAY_MAX_SECS)));
+        n.health    = Math.max(0, n.health    + Math.min(NEEDS_OFFLINE_CAP, (NEEDS_DECAY_RATE.health)    * Math.max(0, elapsed - NEEDS_DECAY_MAX_SECS)));
+
+        n.lastUpdate = nowIso;
+        return n;
+    }
+
+    /** Care-action effects — bounded, deterministic delta maps. */
+    const CARE_ACTIONS = Object.freeze({
+        feed: { hunger: 20, happiness: 5,  energy: -5,  health: 0 },
+        play: { hunger: -5, happiness: 25, energy: -15, health: 0 },
+        rest: { hunger: 0,  happiness: 5,  energy: 30,  health: 10 },
+        call: { hunger: 0,  happiness: 15, energy: 0,   health: 0 }
+    });
+
+    /** Safe value clamped to [0,100]. NaN/Inf treated as lo. */
+    function clamp(v, lo, hi) { return isNaN(v) || !isFinite(v) ? lo : Math.min(hi, Math.max(lo, v)); }
+
+    /**
+     * Apply a named care action. Returns { state, changed, action, feedback }.
+     * state contains updated needs only (no mutation of caller's object).
+     */
+    function applyCareAction(needs, action) {
+        const n = createNeeds(needs);
+        const deltas = CARE_ACTIONS[action];
+        if (!deltas) {
+            // Unknown action → no change
+            n.lastUpdate = new Date().toISOString();
+            return { state: n, changed: false, action: action, feedback: 'unrecognized action' };
+        }
+        let changed = false;
+        ['hunger','happiness','energy','health'].forEach(key => {
+            if (deltas[key]) {
+                const old = n[key];
+                n[key] = clamp(n[key] + deltas[key], 0, 100);
+                if (n[key] !== old) changed = true;
+            }
+        });
+        n.lastUpdate = new Date().toISOString();
+
+        // Build human-readable feedback
+        let parts = [];
+        if (action === 'feed')      parts.push('Nom nom… hunger↑');
+        else if (action === 'play') parts.push('*happy bark* happiness↑');
+        else if (action === 'rest') parts.push('ZZZ… energy restored');
+        else if (action === 'call') parts.push('🐺 WOOF! heard you!');
+        const feedback = changed ? parts.join(', ') : 'Already good';
+        return { state: n, changed: changed, action: action, feedback: feedback };
+    }
+
+    /** Derive a mood label from current needs. Checks in priority order. */
+    function deriveMood(needs) {
+        // Critical distress: any need collapsed (checked first — broad safety net)
+        const min = Math.min(needs.hunger, needs.happiness, needs.energy, needs.health);
+        if (min <= 10) return 'distressed';
+        // Single-critical-low: one vital sign weak but others stable → specific mood
+        // Uses ≥ 15 for companion needs so that a lone near-critical stat yields the named mood
+        if (needs.energy < 25 && needs.happiness >= 15 && needs.health >= 15 && needs.hunger >= 15) return 'sleepy';
+        if (needs.hunger < 25 && needs.happiness >= 15 && needs.energy >= 15 && needs.health >= 15) return 'hungry';
+        // Generalized distress: multiple needs declining together
+        const stressedCount = [
+            needs.hunger < 25,
+            needs.happiness < 25,
+            needs.energy < 25,
+            needs.health < 25
+        ].filter(Boolean).length;
+        if (stressedCount >= 2 && min < 15) return 'distressed';
+        // Positive states
+        if (needs.happiness >= 70 && needs.energy >= 30) return 'playful';
+        return 'content';
+    }
+
+    /**
+     * Choose a behavioral mode based on mood and current task-completion state.
+     * The result is one of: 'idle', 'walk', 'rest', 'forage'.
+     */
+    function chooseBehaviorV2(needs, currentState) {
+        const mood = deriveMood(needs);
+        switch (mood) {
+            case 'distressed':
+                return (needs.hunger < 30) ? 'forage' : 'walk';
+            case 'hungry':
+                return 'forage';
+            case 'sleepy':
+                return 'rest';
+            default:
+                return currentState === 'IDLE' ? 'idle' : 'walk';
+        }
+    }
+
+    /**
+     * Compute one step toward a roaming target. Deterministic — given same inputs, same output.
+     * Returns new { x, y } clamped into the surface bounds.
+     */
+    function stepRoaming(position, target, wolfSize, bounds, speed) {
+        const pos = position && typeof position === 'object' ? position : {x:0,y:0};
+        const tgt = target && typeof target === 'object' ? target : {x:0,y:0};
+        const sz  = wolfSize && typeof wolfSize === 'object' ? wolfSize : {width:48,height:48};
+        const bnd = bounds && typeof bounds === 'object' ? bounds : {};
+        const spd = Number(speed) || 3;
+
+        const dx = tgt.x - pos.x;
+        const dy = tgt.y - pos.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < 2) {
+            return { x: tgt.x, y: tgt.y, arrived: true, frameIndex: 0 };
+        }
+
+        const step = Math.min(spd, dist * 0.12 + 1);
+        const nx = pos.x + (dx / dist) * step;
+        const ny = pos.y + (dy / dist) * step;
+
+        // Clamp to surface using offset-aware logic like clampPosition
+        const sx = Math.floor(Number(bnd.left) || 0);
+        const sy = Math.floor(Number(bnd.top) || 0);
+        const offsetX = (sx > 0 || sy > 0) ? true : false;
+        const width = Math.max(0, Number(bnd.width) || 0);
+        const height = Math.max(0, Number(bnd.height) || 0);
+        const ww = Math.max(0, Number(sz.width) || 0);
+        const wh = Math.max(0, Number(sz.height) || 0);
+        const maxX = offsetX ? sx + Math.max(0, width - ww) : Math.max(0, width - ww);
+        const maxY = offsetX ? sy + Math.max(0, height - wh) : Math.max(0, height - wh);
+        const xMin = offsetX ? sx : 0;
+        const yMin = offsetX ? sy : 0;
+
+        return {
+            x: clamp(Math.round(nx), xMin, Math.ceil(maxX)),
+            y: clamp(Math.round(ny), yMin, Math.ceil(maxY)),
+            arrived: false,
+            frameIndex: 0 // set by caller based on animTick
+        };
+    }
+
+    /* ── Serialization extensions for needs persistence ──────── */
+
+    /** Export complete companion state (includes both legacy + needs fields). */
+    function exportFullState(state, needs) {
+        const base = createState(state);
+        return JSON.stringify(Object.assign({}, base, {
+            needsVersion: needs ? Number(needs.version) : 1,
+            needsHunger:    needs ? Math.round(needs.hunger * 10) / 10 : DEFAULT_NEEDS.hunger,
+            needsHappiness: needs ? Math.round(needs.happiness * 10) / 10 : DEFAULT_NEEDS.happiness,
+            needsEnergy:    needs ? Math.round(needs.energy * 10) / 10 : DEFAULT_NEEDS.energy,
+            needsHealth:    needs ? Math.round(needs.health * 10) / 10 : DEFAULT_NEEDS.health,
+            needsLastUpdate: needs ? needs.lastUpdate : null
+        }));
+    }
+
+    /** Import full companion state with backward-compatible fallback. */
+    function importFullState(serialized) {
+        try {
+            const raw = typeof serialized === 'string' ? JSON.parse(serialized) : serialized;
+            if (!raw || typeof raw !== 'object') return { state: createState(), needs: createNeeds() };
+
+            const base = createState(raw);
+            const needsSrc = {
+                version:   Number(raw.needsVersion) || 1,
+                hunger:    safeNeed(raw.needsHunger),
+                happiness: safeNeed(raw.needsHappiness),
+                energy:    safeNeed(raw.needsEnergy),
+                health:    safeNeed(raw.needsHealth),
+                lastUpdate: raw.needsLastUpdate || null
+            };
+            return { state: base, needs: createNeeds(needsSrc) };
+        } catch (_) {
+            return { state: createState(), needs: createNeeds() };
+        }
+    }
+
+    /** Convert a serialized need value back to 0–100 range. */
+    function safeNeed(v) {
+        const n = Number(v);
+        if (!Number.isFinite(n)) return DEFAULT_NEEDS.hunger;
+        // Support both scaled (e.g. 300 → 30) and plain (e.g. 30 → stays) formats
+        return clamp(n >= 100 ? n / 10 : n, 0, 100);
+    }
+
+    /* ── World-coordinate helpers (application-space terrain) ──────────── */
+
+    /**
+     * Convert a DOM rect (from getBoundingClientRect()) into document/world
+     * coordinates.  The rect's left/top are relative to the current viewport
+     * origin; adding scrollX/scrollY (or visualViewport offset) yields
+     * absolute document coordinates.
+     *
+     * @param {{left:number,top:number,right:number,bottom:number,width:number,height:number}} rect
+     * @param {{x:number,y:number}} scroll  Document scroll offsets ({scrollLeft, scrollTop})
+     * @param {{left?:number,top?:number}|undefined} viewport  VisualViewport object or undefined
+     * @returns {{left:number,top:number,right:number,bottom:number,width:number,height:number}}
+     */
+    function rectToWorldRect(rect, scroll, viewport) {
+        const r = rect && typeof rect === 'object' ? rect : {};
+        const sc = scroll && typeof scroll === 'object' ? scroll : { x: 0, y: 0 };
+        const vpW = Math.max(0, Number(r.width) || 0);
+        const vpH = Math.max(0, Number(r.height) || 0);
+        let sx = 0, sy = 0;
+        if (viewport && Number.isFinite(viewport.top)) {
+            // visualViewport offsetTop is the vertical distance between the
+            // viewport top and the document origin.
+            sy = Math.floor(Number(viewport.top) || 0);
+            sx = Math.floor(Number(viewport.left) || 0);
+        } else {
+            sx = Math.floor(Number(sc.x) || 0);
+            sy = Math.floor(Number(sc.y) || 0);
+        }
+        return {
+            left:   Math.round((Number(r.left) || 0) + sx),
+            top:    Math.round((Number(r.top) || 0) + sy),
+            right:  Math.round((Number(r.right) || 0) + sx),
+            bottom: Math.round((Number(r.bottom) || 0) + sy),
+            width:  vpW,
+            height: vpH
+        };
+    }
+
+    /**
+     * Produce the currently-visible portion of the document as a world-
+     * coordinate rectangle.
+     */
+    function visibleWorldRect(scroll, viewport) {
+        const sc = scroll && typeof scroll === 'object' ? scroll : { x: 0, y: 0 };
+        let sx = 0, sy = 0;
+        if (viewport && Number.isFinite(viewport.top)) {
+            sy = Math.floor(Number(viewport.top) || 0);
+            sx = Math.floor(Number(viewport.left) || 0);
+        } else {
+            sx = Math.floor(Number(sc.x) || 0);
+            sy = Math.floor(Number(sc.y) || 0);
+        }
+        // Try window/document metrics; fall back to safe defaults for Node tests
+        let sw = 800, sh = 600;
+        try {
+            sw = root && root.innerWidth ? root.innerWidth : (typeof window !== 'undefined' ? window.innerWidth : 800);
+            sh = root && root.innerHeight ? root.innerHeight : (typeof window !== 'undefined' ? window.innerHeight : 600);
+        } catch (_) {}
+        return { left: sx, top: sy, right: sx + sw, bottom: sy + sh, width: sw, height: sh };
+    }
+
+    /**
+     * Check whether a world-positioned wolf (top-left corner + size) has
+     * any overlap with the visible world rect.  Returns true for any partial
+     * intersection.
+     */
+    function isWorldPositionVisible(position, visibleRect, wolfSize) {
+        const p = position && typeof position === 'object' ? position : { x: 0, y: 0 };
+        const v = visibleRect && typeof visibleRect === 'object' ? visibleRect : {};
+        const w = wolfSize && typeof wolfSize === 'object' ? wolfSize : { width: 48, height: 48 };
+        const wx = Number(p.x) || 0;
+        const wy = Number(p.y) || 0;
+        const ww = Math.max(0, Number(w.width) || 0);
+        const wh = Math.max(0, Number(w.height) || 0);
+        return !(wx + ww <= v.left || wx >= v.right || wy + wh <= v.top || wy >= v.bottom);
+    }
+
+    /**
+     * Choose a non-top-left entry point on the named visible edge of the
+     * viewport, projected into world coordinates and clamped to the nearest
+     * valid terrain surface.
+     *
+     * Edge names: 'left', 'right', 'top', 'bottom'.
+     */
+    function entryPointForVisibleEdge(edge, visibleRect, terrain, wolfSize) {
+        const v = visibleRect && typeof visibleRect === 'object' ? visibleRect : {};
+        const w = wolfSize && typeof wolfSize === 'object' ? wolfSize : { width: 48, height: 48 };
+        const ww = Math.max(0, Number(w.width) || 0);
+        const wh = Math.max(0, Number(w.height) || 0);
+        // Pick a centre-ish position on the edge (avoids corners)
+        const midX = v.left + ((v.right || v.left + 800) - (v.left) - ww) / 2;
+        const midY = v.top + ((v.bottom || v.top + 600) - (v.top) - wh) / 2;
+        let px, py;
+        switch (edge) {
+            case 'left':
+                px = v.left - ww;         // just outside
+                py = midY;
+                break;
+            case 'right':
+                px = v.right;             // just outside
+                py = midY;
+                break;
+            case 'top':
+                px = midX;
+                py = v.top - wh;
+                break;
+            case 'bottom':
+                px = midX;
+                py = v.bottom;
+                break;
+            default:
+                px = midX;
+                py = midY;
+        }
+        // Normalise terrain entries so they all carry width/height for clampToTerrainWorld
+        if (terrain && Array.isArray(terrain)) {
+            terrain = terrain.map(function(t) {
+                return t && typeof t === 'object' && !t.width ? {
+                    left:   Number(t.left) || 0,
+                    top:    Number(t.top) || 0,
+                    right:  Number(t.right) || (Number(t.left) + 800),
+                    bottom: Number(t.bottom) || (Number(t.top) + 600),
+                    width:  (Number(t.right) || (Number(t.left) + 800)) - (Number(t.left) || 0),
+                    height: (Number(t.bottom) || (Number(t.top) + 600)) - (Number(t.top) || 0)
+                } : t;
+            });
+        }
+        // Clamp onto nearest terrain surface so the wolf appears on something walkable
+        return clampToTerrainWorld({ x: px, y: py }, terrain || [], w);
+    }
+
+    /**
+     * Clamp a world position to a set of terrain surfaces, preferring the
+     * closest surface.  If already inside a surface, returns the position
+     * unchanged.  Falls back to the global union of all surfaces if no hit.
+     */
+    function clampToTerrainWorld(position, terrain, wolfSize) {
+        const p = position && typeof position === 'object' ? position : { x: 0, y: 0 };
+        const w = wolfSize && typeof wolfSize === 'object' ? wolfSize : { width: 48, height: 48 };
+        const sources = Array.isArray(terrain) ? terrain : [terrain];
+        const pts = [];
+        for (const t of sources) {
+            if (!t || typeof t !== 'object') continue;
+            const tl = Math.floor(Number(t.left) || 0);
+            const tt = Math.floor(Number(t.top) || 0);
+            const tw = Math.max(0, Number(t.width) || 0);
+            const th = Math.max(0, Number(t.height) || 0);
+            const maxX = tl + Math.max(0, tw - (Number(w.width) || 0));
+            const maxY = tt + Math.max(0, th - (Number(w.height) || 0));
+            let cx = Math.min(maxX, Math.max(tl, Number(p.x)));
+            let cy = Math.min(maxY, Math.max(tt, Number(p.y)));
+            // Distance from point to this surface (zero if inside)
+            const dx = Math.abs(cx - Number(p.x));
+            const dy = Math.abs(cy - Number(p.y));
+            pts.push({ x: cx, y: cy, dist: dx + dy });
+        }
+        if (pts.length === 0) return { ...p };
+        pts.sort((a, b) => a.dist - b.dist);
+        return { x: pts[0].x, y: pts[0].y };
+    }
+
+    /**
+     * Determine which viewport edge to re-enter from given a previous
+     * world position.  Prefers the nearest side; deterministic for
+     * identical inputs.
+     */
+    function chooseReentryEdge(previousPosition, visibleRect) {
+        const p = previousPosition && typeof previousPosition === 'object' ? previousPosition : { x: 0, y: 0 };
+        const v = visibleRect && typeof visibleRect === 'object' ? visibleRect : {};
+        // Signed offset from centre of the visible viewport
+        const cx = Math.round((Number(v.left) + Number(v.right)) / 2);
+        const cy = Math.round((Number(v.top) + Number(v.bottom)) / 2);
+        const ox = Number(p.x) + 24 - cx;   // +wolfWidth/2
+        const oy = Number(p.y) + 24 - cy;   // +wolfHeight/2
+        if (Math.abs(ox) > Math.abs(oy)) {
+            return ox > 0 ? 'right' : 'left';
+        }
+        return oy > 0 ? 'bottom' : 'top';
+    }
+
     return {
         STATES, DEFAULT_CONFIG, SPRITE_SIZE, PALETTE,
         IDLE_FRAME, WALK_A_FRAME, WALK_B_FRAME, WALK_FRAMES,
@@ -531,6 +960,28 @@
         createState, rewardTaskCompletion, transition,
         clampPosition, visibleSurface, entryEdge,
         exportState, importState,
-        normalizeSurfaces, surfaceTarget
+        normalizeSurfaces, surfaceTarget,
+
+        /* ── Tamagotchi API ─────────────────────────────────────── */
+        DEFAULT_NEEDS,
+        NEEDS_DECAY_MAX_SECS,
+        NEEDS_DECAY_RATE,
+        CARE_ACTIONS,
+        createNeeds,
+        advanceNeeds,
+        applyCareAction,
+        deriveMood,
+        chooseBehavior: chooseBehaviorV2,
+        stepRoaming,
+        exportFullState,
+        importFullState,
+
+        /* ── World-coordinate helpers ───────────────────────────── */
+        rectToWorldRect,
+        visibleWorldRect,
+        isWorldPositionVisible,
+        entryPointForVisibleEdge,
+        clampToTerrainWorld,
+        chooseReentryEdge
     };
 });

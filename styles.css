@@ -1119,16 +1119,134 @@ body {
 
 /* ===== PIXEL CYBERWOLF COMPANION ===== */
 #wolf-layer {
-    position: fixed; inset: 0; z-index: 10000; pointer-events: none; overflow: hidden;
+    position: fixed; inset: 0; z-index: 10000; pointer-events: none; overflow: visible;
 }
 .wolf-companion {
     position: absolute; left: 0; top: 0; width: 48px; height: 48px; min-width: 48px; min-height: 48px;
     padding: 0; border: 1px solid rgba(0, 240, 255, .65);
-    /* Transparent background so dashboard panels show through as walkable surfaces */
     background: transparent;
     box-shadow: 0 0 12px rgba(0, 240, 255, .35), 3px 3px 0 rgba(255, 40, 215, .65);
     cursor: pointer; pointer-events: auto; touch-action: manipulation; transform: translate3d(0, 0, 0);
+    border-radius: 4px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .wolf-companion canvas { display: block; width: 48px; height: 48px; image-rendering: pixelated; }
-.wolf-companion[data-state="CALLED"], .wolf-companion[data-state="CELEBRATING"] { border-color: #ff28d7; box-shadow: 0 0 18px rgba(255, 40, 215, .7), 3px 3px 0 #00f0ff; }
-@media (prefers-reduced-motion: reduce) { .wolf-companion { transition: none !important; } }
+
+/* Attention & celebration visual states */
+.wolf-companion[data-state="CALLED"] {
+    border-color: #ff28d7;
+    box-shadow: 0 0 18px rgba(255, 40, 215, .7), 3px 3px 0 #00f0ff;
+}
+.wolf-companion[data-state="CELEBRATING"] {
+    border-color: var(--green);
+    box-shadow: 0 0 22px rgba(0, 255, 136, .8), 0 0 10px var(--neon-cyan), 3px 3px 0 #00f0ff;
+}
+/* Celebration bounce applied to inner content — does NOT conflict with JS translate on button */
+.wolf-companion .wolf-bounce {
+    display: inline-block;
+}
+.wolf-companion[data-state="CELEBRATING"] .wolf-bounce {
+    animation: wolf-celebrate 0.2s infinite alternate;
+}
+@keyframes wolf-celebrate {
+    from { transform: scale(1.0); }
+    to   { transform: scale(1.08); }
+}
+
+/* Idle state — subtle breathing glow */
+.wolf-companion[data-state="IDLE"]:hover {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 16px rgba(0, 240, 255, .5), 3px 3px 0 rgba(255, 40, 215, .65);
+}
+
+/* Low-hunger indicator — red tint on border */
+.wolf-companion[data-low-hunger="true"] {
+    border-color: rgba(255, 34, 68, .6);
+    box-shadow: 0 0 12px rgba(255, 34, 68, .4), 3px 3px 0 rgba(255, 40, 215, .65);
+}
+
+/* ── Action Seam ────────────────────────────────────────────── */
+.wolf-action-seam {
+    position: absolute;
+    bottom: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none; /* toggled open by JS */
+    flex-direction: row;
+    gap: 3px;
+    padding: 3px 5px;
+    background: rgba(5, 10, 30, 0.92);
+    border: 1px solid rgba(0, 240, 255, .3);
+    border-radius: 6px;
+    backdrop-filter: blur(6px);
+    z-index: 10001;
+    pointer-events: auto;
+    white-space: nowrap;
+}
+.wolf-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    background: rgba(0, 20, 50, 0.7);
+    border: 1px solid rgba(0, 240, 255, .25);
+    border-radius: 4px;
+    color: var(--text-main);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.55rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    line-height: 1;
+    letter-spacing: 0.5px;
+}
+.wolf-action-btn:hover, .wolf-action-btn:focus-visible {
+    border-color: var(--neon-cyan);
+    background: rgba(0, 240, 255, 0.15);
+    color: var(--neon-cyan);
+    box-shadow: 0 0 8px rgba(0, 240, 255, .3);
+    outline: none;
+}
+.wolf-action-btn:active {
+    transform: scale(0.95);
+}
+.wolf-action-icon { font-size: 0.7rem; }
+.wolf-action-text { font-weight: 600; }
+
+/* ── Feedback Area ──────────────────────────────────────────── */
+.wolf-feedback-area {
+    position: absolute;
+    bottom: -50px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 2px 8px;
+    background: rgba(5, 10, 30, 0.95);
+    border: 1px solid rgba(0, 240, 255, .2);
+    border-radius: 4px;
+    color: var(--neon-cyan);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.5rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.wolf-feedback-area.visible {
+    opacity: 1;
+}
+.wolf-feedback-flash {
+    animation: wolf-flash 0.3s ease-in-out;
+}
+@keyframes wolf-flash {
+    0%, 100% { opacity: 0.5; }
+    50%      { opacity: 1; }
+}
+
+/* Reduced motion: disable non-essential animations */
+@media (prefers-reduced-motion: reduce) {
+    .wolf-companion { transition: none !important; }
+    .wolf-companion[data-state="CELEBRATING"] { animation: none !important; }
+    .wolf-action-seam { transition: none !important; }
+}
